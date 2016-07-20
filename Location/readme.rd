@@ -9,6 +9,7 @@
 ## phase 2
 
 - draw map
+- store location to arrayList ( test onResume and without it #1) 
 
 
 ## phase 3
