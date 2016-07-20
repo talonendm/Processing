@@ -1,3 +1,19 @@
 # Complete Library + Editor
 https://p5js.org/download/
 
+# gh-pages:
+# master (default)
+
+[ https://www.youtube.com/watch?v=bFVtrlyH-kc&index=8&list=PLRqwX-V7Uu6ZF9C0YMKuns9sLDzK6zoiV ]
+
+- new repository
+- website name
+- [x] read me 
+
+- Branch: master - make a new branch 
+gh-pages .. create branch
+
+. make things simpler, Settings -> Branches -> Default branch --> gh-pages - ARE YOU SURE? YES
+
+
+
