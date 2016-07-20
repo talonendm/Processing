@@ -16,4 +16,12 @@ gh-pages .. create branch
 . make things simpler, Settings -> Branches -> Default branch --> gh-pages - ARE YOU SURE? YES
 
 
+- Branches (2)
+- delete master
+
+- from settings:  Your site is published at https://talonendm.github.io/p5js-page/
+
+put index.html there.
+
+
 
