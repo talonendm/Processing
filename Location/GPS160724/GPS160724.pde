@@ -13,10 +13,10 @@
 import java.util.*;
 
 // 
-
+float etaisyys =0;
 // --------------------------
 // Android stuff:
-boolean androidi = false;
+boolean androidi = true;
 // --------------------------
 // Ketai can be imported in JAVA mode too...
 import ketai.sensors.*; 
@@ -29,7 +29,7 @@ ArrayList <Spot> sp = new ArrayList <Spot>();
 // --------------------------
 // for JAVA debugging
 // --------------------------
-boolean walk = true;
+boolean walk = false; // true;
 int dev_suuntax = 1;
 int dev_suuntay = 1;
 int dev_speed = 5; //1; //20; // debugging speed
@@ -47,6 +47,9 @@ float mapmaxy;
 
 float speed6last = 10; 
 float trip4start = 10; 
+
+float distance2lastpoint = 20; // 30; // tested 160724 - smaller enough.. later use accuracy threshold for filtering.. if jumps during breaks.
+float accurary_threshold = 40; // 50;
 
 // --------------------------
 // current location - not filtered:
@@ -71,10 +74,10 @@ String maptype = "NAU"; // "TOP" "HYB" "SAT"
 // --------------------------
 // constants
 // --------------------------
-int w_line = 14;
-int w_ellipse = 20;
+int w_line; // = 14;
+int w_ellipse; // = 20;
 float scale_const = 100 * 1/ 11.3 / 100000;
-int scalewithlaststepN = 12; // number of steps shown in the square
+int scalewithlaststepN = 24; // number of steps shown in the square
 
 float paivantasaajalla = 6390*3.142*2/360*1000; // metria
 
@@ -91,7 +94,12 @@ boolean asetettu = false;
 // --------------------------
 void setup() {
 
+  // androidREM NEg.
+  // size(550, 800);  
+  dw = 550; // width;
+  dh = 800;
 
+  
   if (androidi) {
     size(displayWidth, displayHeight);
     orientation(PORTRAIT); // PAKKO OLLA -- XML ei riitä!!
@@ -99,17 +107,15 @@ void setup() {
     dh = displayHeight;
   } else {
   } 
-  size(550, 800);  
-  dw = 550; // width;
-  dh = 800;
-
+  
   background(60);
   frameRate(25);
   // meiko
   cx = 60.146613;
   cy = 24.3355331;
 
-
+  w_ellipse = round(dw/25);
+  w_line = round(dw/35);  
 
   //noLoop();
   // Run the constructor without parameters
@@ -132,7 +138,12 @@ void draw() {
   fill(0, 70, 0);
   rect(0, 0, dw, dw);
 
-
+  if (androidi) { 
+     if (asetettu) {
+     cx = (float)latitude;
+     cy = (float)longitude; 
+     }
+  } else {
   if ((walk) && (frameCount % dev_speed)==0) {
 
     if (random(1)<0.01) {
@@ -158,7 +169,9 @@ void draw() {
       }
     } else {
       sp.add(new Spot(cx, cy, w_ellipse, sp.size ()));
+      asetettu = true;
     }
+  }
   }
   //  sp1.display();
   //  sp2.display();
@@ -215,7 +228,9 @@ void draw() {
   //*-----------------------------------
   // green ball
   //*-----------------------------------
-  drawLocation(cx, cy);
+  if (asetettu) {
+    drawLocation(cx, cy);
+  }
   //*-----------------------------------
 
   if ((sp.size()>0)) {
@@ -312,11 +327,10 @@ class Spot {
 
     if (androidi) {  
       // AndroidREM
-      /*
-       uic = new Location("uic");
-       uic.setLatitude(xpos);
-       uic.setLongitude(ypos);
-       */
+
+      uic = new Location("uic");
+      uic.setLatitude(xpos);
+      uic.setLongitude(ypos);
     } else {
     }
   }
@@ -389,7 +403,7 @@ class Spot {
     float trippi = 0;
     if (androidi) {
       // AndroidREM
-      // trippi = location.getLocation().distanceTo(o.uic);
+      trippi = location.getLocation().distanceTo(o.uic);
     } else {
       trippi = dist(x, y, o.x, o.y) * paivantasaajalla;
     }
@@ -444,19 +458,22 @@ void drawLocation(float x, float y) {
   fill(0, 255, 0);
   ellipse(xx, yy, 20, 20);
 }
+
+
 void drawInfobox() {
-  textSize(18);
+  int rivikoko = round(dw/30);
+  textSize(rivikoko);
   fill(255);
   textAlign(LEFT, CENTER);
-  text("Nopeus:" + speed6last, 20, dw+20);
-  text("Matka (linnuntie):" + nfs(round(trip4start), 0) + " m", 20, dw+40); 
+  text("Nopeus:" + speed6last, 20, dw+rivikoko);
+  text("Matka (linnuntie):" + nfs(round(trip4start), 0) + " m", 20, dw+rivikoko*3); 
 
-  textSize(14);
+  textSize(round(dw/35));
   if (androidi) {
 
     if ((sp.size()>0)) {
-
-      /*
+   // androidREM
+      
   if (location.getProvider() == "none")
        text("Location data is unavailable. \n" +
        "Please check your location settings.", 0, 0, width, height);
@@ -466,58 +483,58 @@ void drawInfobox() {
        "Longitude: " + longitude + "\n" + 
        "Altitude: " + altitude + "\n" +
        "Accuracy: " + accuracy + "\n" +
-       "Distance to sp(0): "+ location.getLocation().distanceTo(sp.get(0).uic) + " m\n" + 
-       "Distance to START: "+ etaisyys + " m\n" + 
+       "Distance to sp(0): "+ location.getLocation().distanceTo(sp.get(0).uic) + " m\n" +  
        "Provider: " + location.getProvider() + "\n" + 
        "Zoom: " + zoomi +", "+zoomi2, dw/3, dw, dw - dw/3, dh-dw);
        
-       */
+       // */
+       // <--- androidREM
     }
   }
 }
 
 
-
+// AndroidREM
 // Android stuff:
-/*
+
 void onResume()
- {
- location = new KetaiLocation(this);
- super.onResume();
- }
- 
- 
- void onLocationEvent(Location _location)
- {
- //print out the location object
- println("onLocation event: " + _location.toString());
- longitude = _location.getLongitude();
- latitude = _location.getLatitude();
- altitude = _location.getAltitude();
- accuracy = _location.getAccuracy();
- 
- 
- if ((!asetettu) && (accuracy<=50)) {
- uic2.setLatitude(latitude);
- uic2.setLongitude(longitude); 
- asetettu = true;
- }
- if (asetettu) {
- etaisyys = location.getLocation().distanceTo(uic2);
- etaisyys = round(etaisyys / 50)*50;
- 
- if (accuracy>50) {
- float pyoristys = 100;
- etaisyys = round(etaisyys / pyoristys)*pyoristys;
- }
- 
- 
- // drawings.add(new Drawing((float)latitude, (float)longitude, (float)altitude, (float)accuracy));
-  if (sp.size ()>0) {
+{
+  location = new KetaiLocation(this);
+  super.onResume();
+}
+
+
+void onLocationEvent(Location _location)
+{
+  //print out the location object
+  println("onLocation event: " + _location.toString());
+  longitude = _location.getLongitude();
+  latitude = _location.getLatitude();
+  altitude = _location.getAltitude();
+  accuracy = _location.getAccuracy();
+
+
+  if ((!asetettu) && (accuracy<=accurary_threshold)) {
+//    uic2.setLatitude(latitude);
+//    uic2.setLongitude(longitude); 
+    asetettu = true;
+  }
+  if (asetettu) {
+   // etaisyys = location.getLocation().distanceTo(uic2);
+    etaisyys = 0; //round(etaisyys / 50)*50;
+
+    if (accuracy>accurary_threshold) {
+      float pyoristys = 100;
+      etaisyys = round(etaisyys / pyoristys)*pyoristys;
+    }
+
+
+    // drawings.add(new Drawing((float)latitude, (float)longitude, (float)altitude, (float)accuracy));
+    if (sp.size ()>0) {
       // float dd = dist(cx, cy, sp.get(sp.size ()-1).x, sp.get(sp.size ()-1).y);
       float dd = location.getLocation().distanceTo(sp.get(sp.size () -1).uic); // viimesimpaan, jos etaisyys riittava
       // println(dd + "/n");
-      if (dd>10) { // etaisyys kait metreissa?! if (dd>0.00004) {
+      if ((dd>distance2lastpoint) && (accuracy<accurary_threshold)) { // etaisyys kait metreissa?! if (dd>0.00004) {
         sp.add(new Spot((float)latitude, (float)longitude, w_ellipse, sp.size ()));
       } else {
         // one time step stayed same location.
@@ -526,8 +543,6 @@ void onResume()
     } else {
       sp.add(new Spot((float)latitude, (float)longitude, w_ellipse, sp.size ()));
     }
- 
- 
- }
- }
- */
+  }
+}
+
