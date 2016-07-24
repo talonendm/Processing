@@ -60,6 +60,7 @@ int dw, dh; // width of the square
 float scale_coor; 
 // --------------------------
 int zoomi =15; // google
+int zoomi2;
 String maptype = "NAU"; // "TOP" "HYB" "SAT" 
 // peruskartta: ei "&l=HYB"
 // --------------------------
@@ -81,7 +82,7 @@ float paivantasaajalla = 6390*3.142*2/360*1000; // metria
 int spots;
 
 // --------------------------
-
+boolean asetettu = false;
 
 
 
@@ -216,7 +217,7 @@ void draw() {
   //*-----------------------------------
   drawLocation(cx, cy);
   //*-----------------------------------
-  
+
   if ((sp.size()>0)) {
     trip4start = sp.get(0).matkaAlusta(sp.get(sp.size()-1));
   }
@@ -238,8 +239,8 @@ void mousePressed() {
   for (int i=0; i<sp.size (); i++) {
     if (sp.get(i).active) {
       // see GIST or Onenote
-       //    link("https://www.google.fi/maps/@" + sp.get(i).x + "," + sp.get(i).y +","+zoomi+"z", "MAP");
-       link("https://www.fonecta.fi/kartat/?lon="+sp.get(i).y+"&lat="+sp.get(i).x+"&z="+zoomi+"&l=NAU");
+      //    link("https://www.google.fi/maps/@" + sp.get(i).x + "," + sp.get(i).y +","+zoomi+"z", "MAP");
+      link("https://www.fonecta.fi/kartat/?lon="+sp.get(i).y+"&lat="+sp.get(i).x+"&z="+zoomi+"&l=NAU");
     }
   }
 
@@ -299,7 +300,7 @@ class Spot {
     c = color(0, 0, 0);
     clicktime = millis();
     clickhour = gettime();
-    
+
     strokeweight = 1;
     id = id_;
 
@@ -307,17 +308,16 @@ class Spot {
     // distance.. just make text boxes without info in Java mode.
     // --------------------------
 
-    
-      
+
+
     if (androidi) {  
       // AndroidREM
       /*
        uic = new Location("uic");
        uic.setLatitude(xpos);
        uic.setLongitude(ypos);
-      */
+       */
     } else {
-        
     }
   }
   void display() {
@@ -389,17 +389,17 @@ class Spot {
     float trippi = 0;
     if (androidi) {
       // AndroidREM
-      // trippi = location.getLocation().distanceTo(o.uic);     
+      // trippi = location.getLocation().distanceTo(o.uic);
     } else {
-      trippi = dist(x,y,o.x,o.y) * paivantasaajalla;
+      trippi = dist(x, y, o.x, o.y) * paivantasaajalla;
     }
     // round;
     trippi = round(trippi / 5)*5;
-    
+
     return trippi;
   }
-  
-  
+
+
   void linedraw(Spot o) {
     strokeWeight(w_line);
     stroke(0, 80);
@@ -433,7 +433,6 @@ void keyPressed() {
       scalewithlaststepN = 10;
     }
   }
-  
 }
 
 
@@ -446,13 +445,89 @@ void drawLocation(float x, float y) {
   ellipse(xx, yy, 20, 20);
 }
 void drawInfobox() {
-   textSize(18);
-   fill(255);
-   textAlign(LEFT,CENTER);
-   text("Nopeus:" + speed6last, 20,dw+20);
-   text("Matka (linnuntie):" + nfs(round(trip4start),0) + " m", 20,dw+40); 
+  textSize(18);
+  fill(255);
+  textAlign(LEFT, CENTER);
+  text("Nopeus:" + speed6last, 20, dw+20);
+  text("Matka (linnuntie):" + nfs(round(trip4start), 0) + " m", 20, dw+40); 
+
+  textSize(14);
+  if (androidi) {
+
+    if ((sp.size()>0)) {
+
+      /*
+  if (location.getProvider() == "none")
+       text("Location data is unavailable. \n" +
+       "Please check your location settings.", 0, 0, width, height);
+       else
+       text("Location data:\n" + 
+       "Latitude: " + latitude + "\n" + 
+       "Longitude: " + longitude + "\n" + 
+       "Altitude: " + altitude + "\n" +
+       "Accuracy: " + accuracy + "\n" +
+       "Distance to sp(0): "+ location.getLocation().distanceTo(sp.get(0).uic) + " m\n" + 
+       "Distance to START: "+ etaisyys + " m\n" + 
+       "Provider: " + location.getProvider() + "\n" + 
+       "Zoom: " + zoomi +", "+zoomi2, dw/3, dw, dw - dw/3, dh-dw);
+       
+       */
+    }
+  }
 }
 
 
 
 // Android stuff:
+/*
+void onResume()
+ {
+ location = new KetaiLocation(this);
+ super.onResume();
+ }
+ 
+ 
+ void onLocationEvent(Location _location)
+ {
+ //print out the location object
+ println("onLocation event: " + _location.toString());
+ longitude = _location.getLongitude();
+ latitude = _location.getLatitude();
+ altitude = _location.getAltitude();
+ accuracy = _location.getAccuracy();
+ 
+ 
+ if ((!asetettu) && (accuracy<=50)) {
+ uic2.setLatitude(latitude);
+ uic2.setLongitude(longitude); 
+ asetettu = true;
+ }
+ if (asetettu) {
+ etaisyys = location.getLocation().distanceTo(uic2);
+ etaisyys = round(etaisyys / 50)*50;
+ 
+ if (accuracy>50) {
+ float pyoristys = 100;
+ etaisyys = round(etaisyys / pyoristys)*pyoristys;
+ }
+ 
+ 
+ // drawings.add(new Drawing((float)latitude, (float)longitude, (float)altitude, (float)accuracy));
+  if (sp.size ()>0) {
+      // float dd = dist(cx, cy, sp.get(sp.size ()-1).x, sp.get(sp.size ()-1).y);
+      float dd = location.getLocation().distanceTo(sp.get(sp.size () -1).uic); // viimesimpaan, jos etaisyys riittava
+      // println(dd + "/n");
+      if (dd>10) { // etaisyys kait metreissa?! if (dd>0.00004) {
+        sp.add(new Spot((float)latitude, (float)longitude, w_ellipse, sp.size ()));
+      } else {
+        // one time step stayed same location.
+        sp.get(sp.size()-1).resting();
+      }
+    } else {
+      sp.add(new Spot((float)latitude, (float)longitude, w_ellipse, sp.size ()));
+    }
+ 
+ 
+ }
+ }
+ */
