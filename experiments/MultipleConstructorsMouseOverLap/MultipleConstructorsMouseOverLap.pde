@@ -7,6 +7,15 @@
  
  */
 
+
+import ketai.sensors.*; 
+
+double longitude, latitude, altitude, accuracy;
+KetaiLocation location;
+
+// Location uic;
+
+
 Spot sp1, sp2;
 
 
@@ -37,7 +46,7 @@ int zoomi =15; // google
 String maptype = "NAU"; // "TOP" "HYB" "SAT" 
 // peruskartta: ei "&l=HYB"
 
-
+boolean androidi = false;
 // zoomin valinta: maptypen valinta, google fonecta.. 
 // kun android toimii: jakaminen.. 
 
@@ -217,6 +226,9 @@ class Spot {
   int strokeweight = 2;
   int rest_time = 1;
   boolean star = false;
+  
+  Location uic;
+  
   // First version of the Spot constructor;
   // the fields are assigned default values
   Spot() {
@@ -241,6 +253,14 @@ class Spot {
     clickhour = gettime();
     strokeweight = 1;
     id = id_;
+
+   
+   // distance.. just make text boxes without info in Java mode.
+   if (androidi) {  
+     uic = new Location("uic");
+    // uic.setLatitude((double)xpos);
+    // uic.setLongitude((double)ypos);
+   }
   }
   void display() {
     fill(c, max(10, 250 - (sp.size ()-id*3)));//,max(10,255 - dist_mouse));
