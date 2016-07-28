@@ -119,8 +119,8 @@ void setup() {
 
 
   // balls
-  w_ellipse = round(dw/17);
-  w_line = round(dw/22);  
+  w_ellipse = round(dw/10); //round(dw/17);
+  w_line = w_ellipse - 4; // simpler, if steps are scaled // round(dw/22);  
   w_infotextsize = round(dw/40); 
 
 
@@ -209,17 +209,18 @@ void draw() {
 
 
 
-  // -------------------------------------------------------
+  // 1 -------------------------------------------------------
   // 160725 - screen coordinates updated each round.
   // -------------------------------------------------------
-  for (int i=0; i<sp.size ()-1; i++) {
+  for (int i=0; i<sp.size (); i++) {
     sp.get(i).screen_location_update();
-    // println(sp.size());
+  }
+  for (int i=1; i<sp.size (); i++) {
+    sp.get(i).check_if_overlaps(sp.get(i-1));
   }
 
 
-
-  // -------------------------------------------------------
+  // 2 -------------------------------------------------------
   // Draw lines: ( later TODO: Check if points in the screen / update information to step object. Also coordinates and boolean, if screen or not! ISSUE
   // -------------------------------------------------------
   for (int i=1; i<sp.size (); i++) {
@@ -229,19 +230,20 @@ void draw() {
   // -------------------------------------------------------
 
 
-  // -------------------------------------------------------
+  // 3 -------------------------------------------------------
   // Draw steps:
   // -------------------------------------------------------
   for (int i=0; i<sp.size (); i++) {
     sp.get(i).display();
     // println(sp.size());
   }
-  // -------------------------------------------------------
+  // 4 -------------------------------------------------------
   // OK. otherwise false clicks. 1) activate the ball, and just the most recent one, if many -- loop TODO backwards, and then break;
   if (mouseY<dw) {
-    for (int i=0; i<sp.size (); i++) {
+    for (int i=sp.size ()-1; i>0; i--) { // backwards, only the last one is activated.. otherwise too many links to www
       sp.get(i).color_update(mouseX, mouseY);
       // println(sp.size());
+      break;
     }
   }
   // -------------------------------------------------------
@@ -260,7 +262,6 @@ void draw() {
   //  }
   // -------------------------------------------------------
 
-
   //*-----------------------------------
   // green ball
   //*-----------------------------------
@@ -273,11 +274,13 @@ void draw() {
     trip4start = sp.get(0).matkaAlusta(sp.get(sp.size()-1));
   }
   // ALABOKSI    
+  stroke(0);
+  strokeWeight(1);
   fill(0, 20, 0);
   rect(0, dw+100, dw, dh-dw-250);
   fill(0, 30, 0);
   rect(0, dw, dw, 100);
-  
+
 
   textAlign(CENTER, CENTER);
   for ( int i=0; i<5; i++) {
@@ -322,8 +325,7 @@ void mousePressed() {
   }
 
   if ((mouseY>dw) && (mouseY<dw+100)) {
-    scalewithlaststepN = round(map(mouseX,0,dw,10,max(10,sp.size()-1)));
-
+    scalewithlaststepN = round(map(mouseX, 0, dw, 10, max(10, sp.size()-1)));
   }
 
   // alalaita nappi
@@ -444,9 +446,9 @@ class Spot {
 
 
     ellipse(xx, yy, r, r);
-    
+
     fill(0);
-   
+
     if (scalewithlaststepN<30) {
       textAlign(LEFT, CENTER);
       text(clickhour + "id:" + id, xx+r, yy);
@@ -496,14 +498,14 @@ class Spot {
     rest_time++;
   }
 
-  boolean overlaps(Spot other) {
-    float d = dist(x, y, other.x, other.y);
-    if ((r + other.r)<d) {
+  boolean overlaps(Spot o) {
+    float d = dist(x, y, o.x, o.y);
+    if ((r + o.r)<d) {
       aseta();
-      other.strokeweight = 2; 
+      o.strokeweight = 2; 
       return true;
     } else {
-      other.strokeweight = 4;
+      o.strokeweight = 4;
       return false;
     }
   }
@@ -524,8 +526,7 @@ class Spot {
 
 
   void linedraw(Spot o) {
-    strokeWeight(w_line);
-    stroke(0, 80);
+
 
     int xx = xs; //round((scale_const +x - mapminx)/scale_coor*dw);
     int yy = ys; // dw-round((scale_const +y - mapminy)/scale_coor*dw);
@@ -533,9 +534,12 @@ class Spot {
     int oyy = o.ys; // dw-round((scale_const +o.y - mapminy)/scale_coor*dw);
 
     if ((draw_spot) || (o.draw_spot)) {
-
+      float ww = min(o.r,r);
+      w_line = round(ww-4); // r min is 9, this is 5, and inner 1. 160728
+      strokeWeight(w_line);
+      stroke(0, 80);
       line(xx, yy, oxx, oyy);
-      strokeWeight(w_line-4);
+      strokeWeight(w_line-4); // innerline - white
       stroke(255, 255, 255, max(10, 150 - (sp.size ()-id*3)));
       line(xx, yy, oxx, oyy);
     }
@@ -544,8 +548,19 @@ class Spot {
   void aseta() {
     // strokeweight = 3;
   }
-}
 
+  void check_if_overlaps(Spot o) {
+    float d = dist(x, y, o.x, o.y);
+    if ((r + o.r)<d) {
+      o.r--;
+      if (o.r<9) {
+        o.r = 9;
+      }
+    } else if (o.r<w_ellipse) {
+      o.r++;
+    }
+  }
+}
 
 void keyPressed() {
   if (key == 'w') {
