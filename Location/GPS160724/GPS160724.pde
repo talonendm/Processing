@@ -38,7 +38,7 @@ int dev_suuntay = 1;
 int dev_speed = 5; //1; //20; // debugging speed
 // --------------------------
 
-
+boolean autoscale_laststepN = true;
 
 int link_buttons_N = 6; // buttons below
 
@@ -70,7 +70,7 @@ float speed6last = 10;
 float trip4start = 10; 
 
 float distance2lastpoint = 20; // 30; // tested 160724 - smaller enough.. later use accuracy threshold for filtering.. if jumps during breaks.
-float accurary_threshold = 40; // 50;
+float accurary_threshold = 20; // 50;  // there could be settings page, where these can be changed... just simple sliders..
 
 
 PImage webImg;
@@ -520,6 +520,12 @@ void mousePressed() {
   if ((mouseY>dw) && (mouseY<dw+100)) {
     // full scale:
     scalewithlaststepN = round(map(mouseX, 0, dw, 1, max(1, sp.size())));
+    
+    if (sp.size() == scalewithlaststepN) {
+      autoscale_laststepN = true;
+    } else {
+      autoscale_laststepN = false;
+    }
   }
 
   // alalaita nappi
@@ -862,7 +868,7 @@ void drawInfobox() {
         "Latitude: " + latitude + "\n" + 
         "Longitude: " + longitude + "\n" + 
         "Altitude: " + round((float)altitude) + "\n" +
-        "Accuracy: " + accuracy + "\n" +
+        "Accuracy: " + accuracy + "UCC: " + accurary_threshold + "m" + "\n" +
         "Distance to sp(0): "+ round((float)location.getLocation().distanceTo(sp.get(0).uic)) + " m\n" +  
         "Provider: " + location.getProvider() + "\n" + 
         "Zoom: " + zoomi +", "+zoomi2+", " + zoomi_yrno, dw/3, dw, dw - dw/3, dh-dw);
@@ -920,6 +926,12 @@ void onLocationEvent(Location _location)
         // note, index e.g. 0 and 1 .. size is 2 !! 160805
         sp.get(sp.size ()-1).set_distance2previous(sp.get(sp.size ()-1-1)); // distance from the first record, resting is resting in that point
         // sp.get(i).check_if_overlaps(sp.get(i-1));
+        
+        //if (sp.size() == scalewithlaststepN) {
+        if (autoscale_laststepN) {
+           scalewithlaststepN = sp.size();
+        } // = true;
+        
       } else {
         // one time step stayed same location.
         sp.get(sp.size()-1).resting();
