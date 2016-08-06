@@ -58,9 +58,9 @@ float s_len = 0.1;  // border size in kilometers
 float c_len_x, c_len_y; // centerizing the smaller distance, x or y
 float max_len; // max x_len or y_len + s_len;
 // --------------------------
-
-
-
+float bird_len_1, route_len_1; // between active and current
+float bird_len_0, route_len_0; // between active and the first spot
+int active_index = -1; // not selected
 
 boolean dev_random_loc = false; // true; //true; // for android inside developing
 float dev_random_size = 500; // larger, smaller steps
@@ -320,7 +320,7 @@ void draw() {
     sp.get(i).screen_location_update();
   }
   for (int i=1; i<sp.size (); i++) {
-    sp.get(i).check_if_overlaps(sp.get(i-1));
+    sp.get(i).check_if_overlaps(sp.get(i-1)); // the last will be large ball!
   }
 
 
@@ -449,10 +449,27 @@ void draw() {
   translate(dw/2,20); // coordinate rotated 90 degrees
   text(round(y_len*1000)+ "m",0,0);
   popMatrix();
+
+
   }
+
+
+  if (active_index>-1) {
+   
+    bird_len_0 = round(1000* dist(sp.get(0).lon * x_scale, sp.get(0).lat * y_scale, sp.get(active_index).lon * x_scale, sp.get(active_index).lat * y_scale));
+    bird_len_1 = round(1000*dist(sp.get(0).lon * x_scale, sp.get(0).lat * y_scale, sp.get(active_index).lon * x_scale, sp.get(active_index).lat * y_scale));
+  
+   // route_len_1;
+   textAlign(LEFT,TOP);
+    text(bird_len_0+ "[m] to active and "+bird_len_1+" [m] from active,dw/2,40)",20,20);
+  
+   
+  }
+
   
   if (dev_random_loc) {
     fill(0,255,0);
+    textAlign(CENTER,CENTER);
     text("DEV MODE - note that GREEN BALL not working correctly",dw/2,40);
   }
 
@@ -488,12 +505,14 @@ void mousePressed() {
     }
 
     // NOTE: i>=0
+    active_index = -1;
     for (int i=sp.size ()-1; i>=0; i--) { // backwards, only the last one is activated.. otherwise too many links to www
       //Spot ss = sp.get(i);
       sp.get(i).color_update();
       // println(sp.size());
       if (sp.get(i).active) {
         println("breaks");
+        active_index = i;
         break;
       }
     }
@@ -780,14 +799,14 @@ class Spot {
     // changed 160805  < --> >
     if ((r + o.r)>d) {
       o.r--;
-      r=r-1;
+      // r=r-1;
       if (o.r<min_spotsize) {
         o.r = min_spotsize;
       }
-      if (r<min_spotsize) r=min_spotsize;
+      // if (r<min_spotsize) r=min_spotsize;
     } else {
-      if (o.r<w_ellipse) o.r++;
-      if (r<w_ellipse) r++;
+      if (o.r<w_ellipse-1) { o.r++; };  // when making larger, and it has been smaller, it will remain one smaller to avoid ++, --, ++ , -- animation in the size
+      // if (r<w_ellipse) r++;
     }
   }
 }
