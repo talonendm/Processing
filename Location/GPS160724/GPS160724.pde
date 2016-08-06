@@ -63,7 +63,7 @@ float bird_len_1, route_len_1; // between active and current
 float bird_len_0, route_len_0; // between active and the first spot
 int active_index = -1; // not selected
 
-boolean dev_random_loc = true; // true; //true; // for android inside developing
+boolean dev_random_loc = false; // true; // true; //true; // for android inside developing
 float dev_random_size = 500; // larger, smaller steps
 
 boolean calculate_route_len = false;
@@ -446,12 +446,14 @@ void draw() {
     // text(round(y_len*1000)+ "m",40,dw/2);
 
     // textAlign(LEFT,CENTER);
+    
+    // is this correct?
     textAlign(CENTER, LEFT);
     text(round(y_len*1000)+ "m", dw/2, -20-6); // -6 just added to make similar
 
-
-    translate(dw/2, 20); // coordinate rotated 90 degrees
-    text(round(y_len*1000)+ "m", 0, 0);
+    // or this one`? - commentted 9:37
+    // translate(dw/2, 20); // coordinate rotated 90 degrees
+    // text(round(y_len*1000)+ "m", 0, 0);
     popMatrix();
   }
 
@@ -463,7 +465,7 @@ void draw() {
 
     // route_len_1;
     textAlign(LEFT, TOP);
-    text(bird_len_0+ "[m] to active and "+bird_len_1+" [m] from active", 30, 20);
+    text(nfs((int)bird_len_0,0)+ " m to active and "+nfs((int)bird_len_1,0)+" m from active", 30, 20);
     
     // lets do loop just when needed, e.g. after changes 160806
     if (calculate_route_len) {
@@ -477,9 +479,11 @@ void draw() {
         }
       }
       calculate_route_len = false;  
+      route_len_0 = round(route_len_0);
+      route_len_1 = round(route_len_1);
     }
     
-    text(route_len_0+ "[m] route to active and "+route_len_1+" [m] route from active", 30, 50);
+    text(nfs((int)route_len_0,0)+ " m route to active and "+ nfs((int)route_len_1,0)+" m route from active", 30, 50);
     
   }
 
@@ -487,7 +491,7 @@ void draw() {
   if (dev_random_loc) {
     fill(0, 255, 0);
     textAlign(CENTER, CENTER);
-    text("DEV MODE - note that GREEN BALL not working correctly", dw/2, 40);
+    text("DEV MODE\nnote that\nGREEN BALL\nnot working correctly", dw/4, dw/4);
   }
 
 
@@ -817,16 +821,17 @@ class Spot {
     // changed 160805  < --> >
     if ((r + o.r)>d) {
       o.r--;
+      r--;
       // r=r-1;
       if (o.r<min_spotsize) {
         o.r = min_spotsize;
       }
-      // if (r<min_spotsize) r=min_spotsize;
+      if (r<min_spotsize) {r=min_spotsize; }
     } else {
       if (o.r<w_ellipse-1) { 
         o.r++;
       };  // when making larger, and it has been smaller, it will remain one smaller to avoid ++, --, ++ , -- animation in the size
-      // if (r<w_ellipse) r++;
+      if (r<w_ellipse-1) r++;
     }
   }
 }
@@ -883,8 +888,8 @@ void drawInfobox() {
   textSize(rivikoko);
   fill(255);
   textAlign(LEFT, CENTER);
-  text("Nopeus:" + speed6last, 20, dw+rivikoko);
-  text("Matka (linnuntie):" + nfs(round(trip4start), 0) + " m", 20, dw+rivikoko*4); 
+  // text("Nopeus:" + speed6last, 20, dw+rivikoko);
+  // text("Matka (linnuntie):" + nfs(round(trip4start), 0) + " m", 20, dw+rivikoko*4); 
 
   textSize(round(dw/35));
 
@@ -914,6 +919,8 @@ void drawInfobox() {
 
       // */
       // <--- androidREM
+    } else {
+      text("No GPS signal", dw/3, dw, dw - dw/3, dh-dw);  
     }
   }
 }
