@@ -54,7 +54,8 @@ float mapmaxy;
 float x_len, y_len; // long and lat changed to meters
 float x_scale = 35; // long degree and lat degree in kilometers
 float y_scale = 111.5; // long degree and lat degree in kilometers
-float s_len = 0.1;  // border size in kilometers
+float s_len0 = 0.02;
+float s_len = s_len0;  // border size in kilometers, 20 meters... lets change this each round #11
 float c_len_x, c_len_y; // centerizing the smaller distance, x or y
 float max_len; // max x_len or y_len + s_len;
 // --------------------------
@@ -62,9 +63,10 @@ float bird_len_1, route_len_1; // between active and current
 float bird_len_0, route_len_0; // between active and the first spot
 int active_index = -1; // not selected
 
-boolean dev_random_loc = false; // true; //true; // for android inside developing
+boolean dev_random_loc = true; // true; //true; // for android inside developing
 float dev_random_size = 500; // larger, smaller steps
 
+boolean calculate_route_len = false;
 
 float speed6last = 10; 
 float trip4start = 10; 
@@ -166,9 +168,9 @@ void setup() {
 
   // balls
   w_ellipse = round(dw/10); //round(dw/17);
-  
+
   r_default = w_ellipse; // in mousepress, very small spots hard to press.
-  
+
   w_line = w_ellipse - 4; // simpler, if steps are scaled // round(dw/22);  
   w_infotextsize = round(dw/40); 
 
@@ -281,28 +283,30 @@ void draw() {
   //println(mapmaxx - mapminx);
 
 
-//  float map_dist_x = (mapmaxx - mapminx) * x_degree_in_km;
-//  float map_dist_y = (mapmaxy - mapminy) * y_degree_in_km;
-//  // think more:  scale_coor = max((mapmaxx - mapminx)* x_scale_const, (mapmaxy - mapminy) * y_scale_const); // the scaling is based on the x or y in [m]
-//  //if 
-//  scale_coor = max((mapmaxx - mapminx), (mapmaxy - mapminy)); // the scaling is based on the x or y in [m]
-//  // scale_coor = scale_coor + 2 * scale_const;  // scale_const 
-//  // Fix later
-//  x_scale_coor = scale_coor;
-//  y_scale_coor = scale_coor;
+  //  float map_dist_x = (mapmaxx - mapminx) * x_degree_in_km;
+  //  float map_dist_y = (mapmaxy - mapminy) * y_degree_in_km;
+  //  // think more:  scale_coor = max((mapmaxx - mapminx)* x_scale_const, (mapmaxy - mapminy) * y_scale_const); // the scaling is based on the x or y in [m]
+  //  //if 
+  //  scale_coor = max((mapmaxx - mapminx), (mapmaxy - mapminy)); // the scaling is based on the x or y in [m]
+  //  // scale_coor = scale_coor + 2 * scale_const;  // scale_const 
+  //  // Fix later
+  //  x_scale_coor = scale_coor;
+  //  y_scale_coor = scale_coor;
 
-//  float x_len, y_len; // long and lat changed to meters
-//float x_scale = 35; // long degree and lat degree in kilometers
-//float y_scale = 111.5; // long degree and lat degree in kilometers
-//float s_len = 0.1;  // border size in kilometers
-//float c_len_x, c_len_y; // centerizing the smaller distance, x or y
-//float max_len; // max x_len or y_len + s_len;
+  //  float x_len, y_len; // long and lat changed to meters
+  //float x_scale = 35; // long degree and lat degree in kilometers
+  //float y_scale = 111.5; // long degree and lat degree in kilometers
+  //float s_len = 0.1;  // border size in kilometers
+  //float c_len_x, c_len_y; // centerizing the smaller distance, x or y
+  //float max_len; // max x_len or y_len + s_len;
 
   x_len = x_scale * (mapmaxx - mapminx);
   y_len = y_scale * (mapmaxy - mapminy);
-  
-  max_len = max(x_len,y_len); //  + s_len*2;
-  
+
+  max_len = max(x_len, y_len); //  + s_len*2;
+
+  s_len = max(s_len0,max_len*0.05); // 5 percent of max len of zoomed width or height or minimum 20 meter marginals
+
   c_len_x = (max_len - x_len) / 2;
   c_len_y = (max_len - y_len) / 2;
 
@@ -409,68 +413,81 @@ void draw() {
     // https://forum.processing.org/one/topic/image-and-xml-in-processing-for-android.html   // permissions: INTERNET
     imageMode(CENTER);
     // image is scaled.. note the order of int variable scaling
-    image(webImg, dw/2, dw/2,dw,round((dw*webImg.height)/webImg.width));
+    image(webImg, dw/2, dw/2, dw, round((dw*webImg.height)/webImg.width));
   }
 
-  
+
   if (max_len>0) {
-  strokeWeight(3);
-  stroke(100,255,255);
-  fill(100,255,255);
-  line(dw/2-x_len/2*dw/max_len,dw-20,dw/2+x_len/2*dw/max_len,dw-20);
-  textAlign(CENTER,BOTTOM);
-  text(round(x_len*1000)+ "m",dw/2,dw-20);
-  
-  line(20,dw/2-y_len/2*dw/max_len,20,dw/2+y_len/2*dw/max_len);
-  textAlign(LEFT,CENTER);
-  
-  
-  // text align is also messed up!! 
-  
-  // this works okay
-  //textAlign(CENTER,LEFT);
-  pushMatrix();
-  // translate(0,0);
-  // rotate(-HALF_PI); // goes another direction
-  rotate(HALF_PI);   // translate and scale should work pretty well for dot mappinG!!! 160805
-  //text(round(y_len*1000)+ "m",0,0);
-  //text(round(y_len*1000)+ "m",20,-dw/2);
-  //text(round(y_len*1000)+ "m",20,-dw/2);
-  //text(round(y_len*1000)+ "me",-dw/2,20);
-  //text(round(y_len*1000)+ "met",dw/2,20);
-  //text(round(y_len*1000)+ "mete",-dw/2,-20);
-  // text(round(y_len*1000)+ "m",40,dw/2);
-  
-  // textAlign(LEFT,CENTER);
-  textAlign(CENTER,LEFT);
-  text(round(y_len*1000)+ "m",dw/2,-20-6); // -6 just added to make similar
-  
-  
-  translate(dw/2,20); // coordinate rotated 90 degrees
-  text(round(y_len*1000)+ "m",0,0);
-  popMatrix();
+    strokeWeight(3);
+    stroke(100, 255, 255);
+    fill(100, 255, 255);
+    line(dw/2-x_len/2*dw/max_len, dw-20, dw/2+x_len/2*dw/max_len, dw-20);
+    textAlign(CENTER, BOTTOM);
+    text(round(x_len*1000)+ "m", dw/2, dw-20);
+
+    line(20, dw/2-y_len/2*dw/max_len, 20, dw/2+y_len/2*dw/max_len);
+    textAlign(LEFT, CENTER);
 
 
+    // text align is also messed up!! 
+
+    // this works okay
+    //textAlign(CENTER,LEFT);
+    pushMatrix();
+    // translate(0,0);
+    // rotate(-HALF_PI); // goes another direction
+    rotate(HALF_PI);   // translate and scale should work pretty well for dot mappinG!!! 160805
+    //text(round(y_len*1000)+ "m",0,0);
+    //text(round(y_len*1000)+ "m",20,-dw/2);
+    //text(round(y_len*1000)+ "m",20,-dw/2);
+    //text(round(y_len*1000)+ "me",-dw/2,20);
+    //text(round(y_len*1000)+ "met",dw/2,20);
+    //text(round(y_len*1000)+ "mete",-dw/2,-20);
+    // text(round(y_len*1000)+ "m",40,dw/2);
+
+    // textAlign(LEFT,CENTER);
+    textAlign(CENTER, LEFT);
+    text(round(y_len*1000)+ "m", dw/2, -20-6); // -6 just added to make similar
+
+
+    translate(dw/2, 20); // coordinate rotated 90 degrees
+    text(round(y_len*1000)+ "m", 0, 0);
+    popMatrix();
   }
 
 
   if (active_index>-1) {
-   
+
     bird_len_0 = round(1000* dist(sp.get(0).lon * x_scale, sp.get(0).lat * y_scale, sp.get(active_index).lon * x_scale, sp.get(active_index).lat * y_scale));
-    bird_len_1 = round(1000*dist(sp.get(0).lon * x_scale, sp.get(0).lat * y_scale, sp.get(active_index).lon * x_scale, sp.get(active_index).lat * y_scale));
-  
-   // route_len_1;
-   textAlign(LEFT,TOP);
-    text(bird_len_0+ "[m] to active and "+bird_len_1+" [m] from active,dw/2,40)",20,20);
-  
-   
+    bird_len_1 = round(1000*dist(sp.get(sp.size ()-1).lon * x_scale, sp.get(sp.size () -1).lat * y_scale, sp.get(active_index).lon * x_scale, sp.get(active_index).lat * y_scale));
+
+    // route_len_1;
+    textAlign(LEFT, TOP);
+    text(bird_len_0+ "[m] to active and "+bird_len_1+" [m] from active", 30, 20);
+    
+    // lets do loop just when needed, e.g. after changes 160806
+    if (calculate_route_len) {
+      route_len_1 = 0;
+      route_len_0 = 0;
+      for (int i=0; i<sp.size (); i++) {
+        if (i<=active_index) {
+          route_len_0 = route_len_0 + sp.get(i).distance2previous;
+        } else {
+          route_len_1 = route_len_1 + sp.get(i).distance2previous;
+        }
+      }
+      calculate_route_len = false;  
+    }
+    
+    text(route_len_0+ "[m] route to active and "+route_len_1+" [m] route from active", 30, 50);
+    
   }
 
-  
+
   if (dev_random_loc) {
-    fill(0,255,0);
-    textAlign(CENTER,CENTER);
-    text("DEV MODE - note that GREEN BALL not working correctly",dw/2,40);
+    fill(0, 255, 0);
+    textAlign(CENTER, CENTER);
+    text("DEV MODE - note that GREEN BALL not working correctly", dw/2, 40);
   }
 
 
@@ -513,6 +530,7 @@ void mousePressed() {
       if (sp.get(i).active) {
         println("breaks");
         active_index = i;
+        calculate_route_len = true;
         break;
       }
     }
@@ -539,7 +557,7 @@ void mousePressed() {
   if ((mouseY>dw) && (mouseY<dw+100)) {
     // full scale:
     scalewithlaststepN = round(map(mouseX, 0, dw, 1, max(1, sp.size())));
-    
+
     if (sp.size() == scalewithlaststepN) {
       autoscale_laststepN = true;
     } else {
@@ -632,12 +650,12 @@ class Spot {
   Spot(float latpos, float lonpos, float radius_, int id_) {
     lat = latpos;   // latitude
     lon = lonpos;   // longitude
-    
+
     if (dev_random_loc) {
       lat = lat + random(1000)/(1000*dev_random_size) - 1/(1000*dev_random_size)/2/4;  //going to one direction randomly
       lon = lon + random(1000)/(1000*dev_random_size) - 1/(1000*dev_random_size)/2/4;  //going to one direction randomly
     } 
-    
+
     r = radius_;
     c = color(0, 0, 0);
     clicktime = millis();
@@ -659,7 +677,7 @@ class Spot {
     }
   }
   void display() {
-    
+
     // stroke(strokeweight);
     strokeWeight(strokeweight);
 
@@ -672,12 +690,12 @@ class Spot {
     }
 
 
-// last could look different
-//    if (id == size()) {
-//      fill(c, 150);
-//      ellipse(xs, ys, r+8, r+8);
-//    }
-   fill(c, 250); // max(10, 250 - (sp.size ()-id*3)));//,max(10,255 - dist_mouse));
+    // last could look different
+    //    if (id == size()) {
+    //      fill(c, 150);
+    //      ellipse(xs, ys, r+8, r+8);
+    //    }
+    fill(c, 250); // max(10, 250 - (sp.size ()-id*3)));//,max(10,255 - dist_mouse));
     ellipse(xs, ys, r, r);
 
     fill(200);
@@ -697,13 +715,13 @@ class Spot {
     // xs = round((scale_const + x - mapminx)/scale_coor*dw);
     // ys = dw - round((scale_const +y - mapminy)/scale_coor*dw);
 
-//    xs = round((scale_const + lon - mapminx)/x_scale_coor*dw);
-//    ys = dw - round((scale_const + lat - mapminy)/y_scale_coor*dw);
-//    
-    
-     xs = round(((lon - mapminx) * x_scale + s_len + c_len_x) / max_len * dw);
-     ys = dw - round((((lat - mapminy) * y_scale + s_len + c_len_y) / max_len * dw));
-    
+    //    xs = round((scale_const + lon - mapminx)/x_scale_coor*dw);
+    //    ys = dw - round((scale_const + lat - mapminy)/y_scale_coor*dw);
+    //    
+
+    xs = round(((lon - mapminx) * x_scale + s_len + c_len_x) / max_len * dw);
+    ys = dw - round((((lat - mapminy) * y_scale + s_len + c_len_y) / max_len * dw));
+
 
     if ((xs+r>=0) && (xs-r<=dw) && (ys+r>=0) && (ys-r<=dw)) {
       draw_spot = true;
@@ -737,9 +755,9 @@ class Spot {
     rest_time++;
   }
 
-  
+
   void set_distance2previous(Spot o) {
-    distance2previous = sqrt(pow((lat-o.lat)*y_scale,2) + pow((lon-o.lon)*x_scale,2))*1000;
+    distance2previous = sqrt(pow((lat-o.lat)*y_scale, 2) + pow((lon-o.lon)*x_scale, 2))*1000;
   }
 
 
@@ -805,7 +823,9 @@ class Spot {
       }
       // if (r<min_spotsize) r=min_spotsize;
     } else {
-      if (o.r<w_ellipse-1) { o.r++; };  // when making larger, and it has been smaller, it will remain one smaller to avoid ++, --, ++ , -- animation in the size
+      if (o.r<w_ellipse-1) { 
+        o.r++;
+      };  // when making larger, and it has been smaller, it will remain one smaller to avoid ++, --, ++ , -- animation in the size
       // if (r<w_ellipse) r++;
     }
   }
@@ -867,11 +887,11 @@ void drawInfobox() {
   text("Matka (linnuntie):" + nfs(round(trip4start), 0) + " m", 20, dw+rivikoko*4); 
 
   textSize(round(dw/35));
-  
-  textAlign(CENTER,CENTER);
-  
-  String spots_zoomed = min(sp.size(),scalewithlaststepN) + "/" + sp.size();
-  text(spots_zoomed, dw/2,dw+rivikoko);
+
+  textAlign(CENTER, CENTER);
+
+  String spots_zoomed = min(sp.size(), scalewithlaststepN) + "/" + sp.size();
+  text(spots_zoomed, dw/2, dw+rivikoko);
   textAlign(LEFT, CENTER);
   if (androidi) {
 
@@ -941,20 +961,20 @@ void onLocationEvent(Location _location)
       // println(dd + "/n");
       if ((dd>distance2lastpoint) && (accuracy<accurary_threshold)) { // etaisyys kait metreissa?! if (dd>0.00004) {
         sp.add(new Spot((float)latitude, (float)longitude, w_ellipse, sp.size ()));
+        
+        calculate_route_len = true;
         // just added, now just call and compare 1 before it.
         // note, index e.g. 0 and 1 .. size is 2 !! 160805
         sp.get(sp.size ()-1).set_distance2previous(sp.get(sp.size ()-1-1)); // distance from the first record, resting is resting in that point
         // sp.get(i).check_if_overlaps(sp.get(i-1));
-        
+
         //if (sp.size() == scalewithlaststepN) {
         if (autoscale_laststepN) {
-           scalewithlaststepN = sp.size();
+          scalewithlaststepN = sp.size();
         } // = true;
-        
       } else {
         // one time step stayed same location.
         sp.get(sp.size()-1).resting();
-        
       }
     } else {
       sp.add(new Spot((float)latitude, (float)longitude, w_ellipse, sp.size ()));
