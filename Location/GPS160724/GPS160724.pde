@@ -28,6 +28,8 @@ KetaiLocation location;
 double longitude, latitude, altitude, accuracy;
 // --------------------------
 ArrayList <Spot> sp = new ArrayList <Spot>();
+ArrayList <Spot> spAll = new ArrayList <Spot>(); // no lines between, all dots draw before real dots. use alpha.
+
 
 // --------------------------
 // for JAVA debugging
@@ -57,22 +59,22 @@ float y_scale = 111.5; // long degree and lat degree in kilometers
 float s_len0 = 0.02;
 float s_len = s_len0;  // border size in kilometers, 20 meters... lets change this each round #11
 float c_len_x, c_len_y; // centerizing the smaller distance, x or y
-float max_len; // max x_len or y_len + s_len;
+float max_len, max_len_xy; // max x_len or y_len + s_len;
 // --------------------------
 float bird_len_1, route_len_1; // between active and current
 float bird_len_0, route_len_0; // between active and the first spot
 int active_index = -1; // not selected
 
 boolean dev_random_loc = false; // true; // true; //true; // for android inside developing
-float dev_random_size = 500; // larger, smaller steps
+float dev_random_size = 300; // larger, smaller steps
 
 boolean calculate_route_len = false;
 
 float speed6last = 10; 
 float trip4start = 10; 
 
-float distance2lastpoint = 20; // 30; // tested 160724 - smaller enough.. later use accuracy threshold for filtering.. if jumps during breaks.
 float accurary_threshold = 20; // 50;  // there could be settings page, where these can be changed... just simple sliders..
+float distance2lastpoint = accurary_threshold*2; // then there should be no need to merge dots; // changed 160823 -- 20; // 30; // tested 160724 - smaller enough.. later use accuracy threshold for filtering.. if jumps during breaks.
 
 
 PImage webImg;
@@ -246,13 +248,13 @@ void draw() {
         float dd = dist(cx, cy, sp.get(sp.size ()-1).lon, sp.get(sp.size ()-1).lat);
         // println(dd + "/n");
         if (dd>0.00004) {
-          sp.add(new Spot(cx, cy, w_ellipse, sp.size ()));
+          sp.add(new Spot(cx, cy, w_ellipse, sp.size (),20));
         } else {
           // one time step stayed same location.
           sp.get(sp.size()-1).resting();
         }
       } else {
-        sp.add(new Spot(cx, cy, w_ellipse, sp.size ()));
+        sp.add(new Spot(cx, cy, w_ellipse, sp.size (),20));
         asetettu = true;
       }
     }
@@ -303,17 +305,36 @@ void draw() {
   x_len = x_scale * (mapmaxx - mapminx);
   y_len = y_scale * (mapmaxy - mapminy);
 
-  max_len = max(x_len, y_len); //  + s_len*2;
+  
+  max_len_xy = max(x_len, y_len); //  + s_len*2; // [km]
 
-  s_len = max(s_len0,max_len*0.05); // 5 percent of max len of zoomed width or height or minimum 20 meter marginals
+  s_len = max(s_len0, max_len_xy*0.05); // 5 percent of max len of zoomed width or height or minimum 20 meter marginals
 
-  c_len_x = (max_len - x_len) / 2;
-  c_len_y = (max_len - y_len) / 2;
+  c_len_x = (max_len_xy - x_len) / 2;
+  c_len_y = (max_len_xy - y_len) / 2;
 
-  max_len = max_len + s_len*2;
+  max_len = max_len_xy + s_len*2;
 
 
   // -------------------------------------------------------
+
+
+  for (int i=0; i<spAll.size (); i++) {
+    spAll.get(i).screen_location_update();
+  }
+
+
+  // 3 -------------------------------------------------------
+  // Draw steps:
+  // -------------------------------------------------------
+  for (int i=0; i<spAll.size (); i++) {
+    spAll.get(i).display_alpha();
+    // println(sp.size());
+  }
+  for (int i=0; i<sp.size (); i++) {
+    sp.get(i).display_alpha();
+    // println(sp.size());
+  }
 
 
 
@@ -446,7 +467,7 @@ void draw() {
     // text(round(y_len*1000)+ "m",40,dw/2);
 
     // textAlign(LEFT,CENTER);
-    
+
     // is this correct?
     textAlign(CENTER, LEFT);
     text(round(y_len*1000)+ "m", dw/2, -20-6); // -6 just added to make similar
@@ -465,8 +486,8 @@ void draw() {
 
     // route_len_1;
     textAlign(LEFT, TOP);
-    text(nfs((int)bird_len_0,0)+ " m to active and "+nfs((int)bird_len_1,0)+" m from active", 30, 20);
-    
+    text(nfs((int)bird_len_0, 0)+ " m to active and "+nfs((int)bird_len_1, 0)+" m from active", 30, 20);
+
     // lets do loop just when needed, e.g. after changes 160806
     if (calculate_route_len) {
       route_len_1 = 0;
@@ -482,9 +503,8 @@ void draw() {
       route_len_0 = round(route_len_0);
       route_len_1 = round(route_len_1);
     }
-    
-    text(nfs((int)route_len_0,0)+ " m route to active and "+ nfs((int)route_len_1,0)+" m route from active", 30, 50);
-    
+
+    text(nfs((int)route_len_0, 0)+ " m route to active and "+ nfs((int)route_len_1, 0)+" m route from active", 30, 50);
   }
 
 
@@ -612,7 +632,7 @@ String gettime() {
 //*-----------------------------------
 class Spot {
   float lat, lon, r;
-  float a; // accuracy
+  float accuracy, a; // accuracy and scaled accuracy for the plot in pixels
   boolean active; // mouse over bubble
   int id;
   color c;
@@ -628,6 +648,7 @@ class Spot {
   Location uic;
   // --------------------------
   boolean draw_spot = true; // not implemented yet, go the loop through
+  boolean draw_spot_alpha = true; // these are alpha spots for all measurements.
   int xs, ys; // TODO, scaled coordinates on the screen, round the values, check if in the screen, otherwise no draw. 0-r,0-r,dw+r,dw+r the limits
   // --------------------------
 
@@ -651,7 +672,7 @@ class Spot {
   // --------------------------
   // TODO: add accuracy, height, etc.
   // --------------------------
-  Spot(float latpos, float lonpos, float radius_, int id_) {
+  Spot(float latpos, float lonpos, float radius_, int id_, float accuracy_) {
     lat = latpos;   // latitude
     lon = lonpos;   // longitude
 
@@ -667,6 +688,7 @@ class Spot {
 
     strokeweight = 1;
     id = id_;
+    accuracy = accuracy_;
 
     // accuracy not stored to spots
     // --------------------------
@@ -680,38 +702,52 @@ class Spot {
       uic.setLongitude(lon);
     }
   }
+
+
+  void display_alpha() {
+
+    if (draw_spot_alpha) {
+      noStroke();
+      fill(100, 255, 255, 10); // max(10, 250 - (sp.size ()-id*3)));//,max(10,255 - dist_mouse));
+      ellipse(xs, ys, a, a);
+      fill(50,50,50);
+      text("DEV: " + accuracy + " m," + a + " pix", xs,ys);
+    }
+  }
+
   void display() {
+    if ( draw_spot ) {
+      // stroke(strokeweight);
+      strokeWeight(strokeweight);
 
-    // stroke(strokeweight);
-    strokeWeight(strokeweight);
+      if (star) {
+        strokeWeight(2);
+        stroke(255, 255, 0);
+      } else {
+        strokeWeight(1);
+        stroke(0);
+      }
 
-    if (star) {
-      strokeWeight(2);
-      stroke(255, 255, 0);
-    } else {
-      strokeWeight(1);
-      stroke(0);
+
+      // last could look different
+      //    if (id == size()) {
+      //      fill(c, 150);
+      //      ellipse(xs, ys, r+8, r+8);
+      //    }
+      fill(c, 250); // max(10, 250 - (sp.size ()-id*3)));//,max(10,255 - dist_mouse));
+      ellipse(xs, ys, r, r);
+
+      fill(200);
+
+      if (scalewithlaststepN<30) {
+        textAlign(LEFT, CENTER);
+        text(clickhour + "id:" + id + "\n dist: " + round(distance2previous) + "m", xs+r, ys);
+      }
+
+      fill(255);
+      textAlign(CENTER, CENTER);
+      text(rest_time, xs, ys);
     }
-
-
-    // last could look different
-    //    if (id == size()) {
-    //      fill(c, 150);
-    //      ellipse(xs, ys, r+8, r+8);
-    //    }
-    fill(c, 250); // max(10, 250 - (sp.size ()-id*3)));//,max(10,255 - dist_mouse));
-    ellipse(xs, ys, r, r);
-
-    fill(200);
-
-    if (scalewithlaststepN<30) {
-      textAlign(LEFT, CENTER);
-      text(clickhour + "id:" + id + "\n dist: " + round(distance2previous) + "m", xs+r, ys);
-    }
-
-    fill(255);
-    textAlign(CENTER, CENTER);
-    text(rest_time, xs, ys);
   }
 
 
@@ -726,11 +762,18 @@ class Spot {
     xs = round(((lon - mapminx) * x_scale + s_len + c_len_x) / max_len * dw);
     ys = dw - round((((lat - mapminy) * y_scale + s_len + c_len_y) / max_len * dw));
 
+    a = (accuracy*dw) / max_len/1000; // i gueess this was in km
 
     if ((xs+r>=0) && (xs-r<=dw) && (ys+r>=0) && (ys-r<=dw)) {
       draw_spot = true;
     } else {
       draw_spot = false;
+    }
+
+    if ((xs+a>=0) && (xs-a<=dw) && (ys+a>=0) && (ys-a<=dw)) {
+      draw_spot_alpha = true;
+    } else {
+      draw_spot_alpha = false;
     }
   }
 
@@ -826,7 +869,9 @@ class Spot {
       if (o.r<min_spotsize) {
         o.r = min_spotsize;
       }
-      if (r<min_spotsize) {r=min_spotsize; }
+      if (r<min_spotsize) {
+        r=min_spotsize;
+      }
     } else {
       if (o.r<w_ellipse-1) { 
         o.r++;
@@ -920,7 +965,7 @@ void drawInfobox() {
       // */
       // <--- androidREM
     } else {
-      text("No GPS signal", dw/3, dw, dw - dw/3, dh-dw);  
+      text("No GPS signal", dw/3, dw, dw - dw/3, dh-dw);
     }
   }
 }
@@ -967,8 +1012,12 @@ void onLocationEvent(Location _location)
       float dd = location.getLocation().distanceTo(sp.get(sp.size () -1).uic); // viimesimpaan, jos etaisyys riittava
       // println(dd + "/n");
       if ((dd>distance2lastpoint) && (accuracy<accurary_threshold)) { // etaisyys kait metreissa?! if (dd>0.00004) {
-        sp.add(new Spot((float)latitude, (float)longitude, w_ellipse, sp.size ()));
-        
+        sp.add(new Spot((float)latitude, (float)longitude, w_ellipse, sp.size (), (float)accuracy));
+
+        // need to store the accuracy!!! ADD also other places...
+        // not obligatory - lets draw also to these spots too the ellipses
+        //spAll.add(new Spot((float)latitude, (float)longitude, w_ellipse, spAll.size ()));
+
         calculate_route_len = true;
         // just added, now just call and compare 1 before it.
         // note, index e.g. 0 and 1 .. size is 2 !! 160805
@@ -982,10 +1031,16 @@ void onLocationEvent(Location _location)
       } else {
         // one time step stayed same location.
         sp.get(sp.size()-1).resting();
+
+        // need to store the accuracy!!! ADD also other places...
+        spAll.add(new Spot((float)latitude, (float)longitude, w_ellipse, spAll.size (), (float)accuracy));
       }
     } else {
-      sp.add(new Spot((float)latitude, (float)longitude, w_ellipse, sp.size ()));
+      sp.add(new Spot((float)latitude, (float)longitude, w_ellipse, sp.size (),20));
       sp.get(0).distance2previous = 0; // no previous spot
+
+      // need to store the accuracy!!! ADD also other places...
+      spAll.add(new Spot((float)latitude, (float)longitude, w_ellipse, spAll.size (), (float)accuracy));
     }
   }
 }
