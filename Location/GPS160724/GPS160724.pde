@@ -7,6 +7,9 @@
  1607xx * TODO: information: speed, distances
  1607xx * pinch, distance, mark interesting place. time spent in ball, if more than 1.
  
+ 160823 - do not commit - working version at github - fix this
+ I guess the avg. calculation has some bugs. 
+ 
  
  */
 
@@ -30,6 +33,7 @@ double longitude, latitude, altitude, accuracy;
 ArrayList <Spot> sp = new ArrayList <Spot>();
 ArrayList <Spot> spAll = new ArrayList <Spot>(); // no lines between, all dots draw before real dots. use alpha.
 
+String DEV_avg_string = "-";
 
 // --------------------------
 // for JAVA debugging
@@ -39,10 +43,15 @@ int dev_suuntax = 1;
 int dev_suuntay = 1;
 int dev_speed = 5; //1; //20; // debugging speed
 // --------------------------
+boolean dev_random_loc = false; //false; // true; // true; //true; // for android inside developing
+float dev_random_size = 300; // larger, smaller steps
+
 
 boolean autoscale_laststepN = true;
 
 int link_buttons_N = 6; // buttons below
+
+int place_added_millis = 0;
 
 // --------------------------
 // map scaling:
@@ -56,7 +65,7 @@ float mapmaxy;
 float x_len, y_len; // long and lat changed to meters
 float x_scale = 35; // long degree and lat degree in kilometers
 float y_scale = 111.5; // long degree and lat degree in kilometers
-float s_len0 = 0.02;
+float s_len0 = 0.05; // 0.02; // [km]
 float s_len = s_len0;  // border size in kilometers, 20 meters... lets change this each round #11
 float c_len_x, c_len_y; // centerizing the smaller distance, x or y
 float max_len, max_len_xy; // max x_len or y_len + s_len;
@@ -65,8 +74,6 @@ float bird_len_1, route_len_1; // between active and current
 float bird_len_0, route_len_0; // between active and the first spot
 int active_index = -1; // not selected
 
-boolean dev_random_loc = false; // true; // true; //true; // for android inside developing
-float dev_random_size = 300; // larger, smaller steps
 
 boolean calculate_route_len = false;
 
@@ -75,7 +82,7 @@ float trip4start = 10;
 
 float accurary_threshold = 20; // 50;  // there could be settings page, where these can be changed... just simple sliders..
 float distance2lastpoint = accurary_threshold*2; // then there should be no need to merge dots; // changed 160823 -- 20; // 30; // tested 160724 - smaller enough.. later use accuracy threshold for filtering.. if jumps during breaks.
-
+int fromwherelastspot = 0;
 
 PImage webImg;
 String url_meripinta = "http://cdn.fmi.fi/legacy-fmi-fi-content/products/sea-level-observation-graphs/yearly-plot.php?station=12&lang=fi";
@@ -193,6 +200,11 @@ void setup() {
   // webImg = loadImage(url_meripinta);
 
 
+  // to get steps...
+  if (dev_random_loc) {
+    distance2lastpoint = distance2lastpoint /2;
+  }
+
   // not implemented yet... similarly as meripinta:
   // Images which are shown directly in app: (LATER: select the closest station... 160805: now fxed to helsinki
   url_image[0] = "http://cdn.fmi.fi/legacy-fmi-fi-content/products/sea-level-observation-graphs/yearly-plot.php?station=12&lang=fi";
@@ -248,13 +260,13 @@ void draw() {
         float dd = dist(cx, cy, sp.get(sp.size ()-1).lon, sp.get(sp.size ()-1).lat);
         // println(dd + "/n");
         if (dd>0.00004) {
-          sp.add(new Spot(cx, cy, w_ellipse, sp.size (),20));
+          sp.add(new Spot(cx, cy, w_ellipse, sp.size (), 20));
         } else {
           // one time step stayed same location.
           sp.get(sp.size()-1).resting();
         }
       } else {
-        sp.add(new Spot(cx, cy, w_ellipse, sp.size (),20));
+        sp.add(new Spot(cx, cy, w_ellipse, sp.size (), 20));
         asetettu = true;
       }
     }
@@ -305,9 +317,10 @@ void draw() {
   x_len = x_scale * (mapmaxx - mapminx);
   y_len = y_scale * (mapmaxy - mapminy);
 
-  
+
   max_len_xy = max(x_len, y_len); //  + s_len*2; // [km]
 
+  // min marginaali: s_len0
   s_len = max(s_len0, max_len_xy*0.05); // 5 percent of max len of zoomed width or height or minimum 20 meter marginals
 
   c_len_x = (max_len_xy - x_len) / 2;
@@ -328,11 +341,11 @@ void draw() {
   // Draw steps:
   // -------------------------------------------------------
   for (int i=0; i<spAll.size (); i++) {
-    spAll.get(i).display_alpha();
+    spAll.get(i).display_alpha(spAll.size ());
     // println(sp.size());
   }
   for (int i=0; i<sp.size (); i++) {
-    sp.get(i).display_alpha();
+    sp.get(i).display_alpha(sp.size ()); // mites nää.. tarvitaanko
     // println(sp.size());
   }
 
@@ -513,8 +526,12 @@ void draw() {
     textAlign(CENTER, CENTER);
     text("DEV MODE\nnote that\nGREEN BALL\nnot working correctly", dw/4, dw/4);
   }
-
-
+  textAlign(RIGHT, TOP);
+  fill(255);
+  int m_after_start = round(millis()/1000);
+  text(m_after_start-place_added_millis + " / " + m_after_start + "\n" + spAll.size() + ", sp=" + sp.size(), dw-20, 20);
+  text(DEV_avg_string, dw- 20, 140);
+  text("spall: " + fromwherelastspot + ".." + spAll.size (), dw-20, 240);
   drawInfobox();
 }
 //*-----------------------------------  //*-----------------------------------
@@ -638,6 +655,10 @@ class Spot {
   color c;
   int clicktime;
   String clickhour;
+  int clicktime_out;   // avg_calc..
+  String clickhour_out; // avg calculated
+  int clicktime_spent;
+
   float dist_mouse = 0;
   int strokeweight = 2;
   int rest_time = 1;
@@ -704,14 +725,17 @@ class Spot {
   }
 
 
-  void display_alpha() {
+  void display_alpha(int si) {
 
     if (draw_spot_alpha) {
       noStroke();
-      fill(100, 255, 255, 10); // max(10, 250 - (sp.size ()-id*3)));//,max(10,255 - dist_mouse));
+      // how to get this.object size inside object? 160823
+      // fill(100+100*(spAll.size()==id), 255, 255, round(id/spAll.size()*48+2)); // max(10, 250 - (sp.size ()-id*3)));//,max(10,255 - dist_mouse));
+      // fill(200,100,200,10);
+      fill(100, 200, 200, round(id*48/si+22));
       ellipse(xs, ys, a, a);
-      fill(50,50,50);
-      text("DEV: " + accuracy + " m," + a + " pix", xs,ys);
+      //    fill(50,50,50);
+      //      text("DEV: " + accuracy + " m," + a + " pix", xs,ys);
     }
   }
 
@@ -741,7 +765,7 @@ class Spot {
 
       if (scalewithlaststepN<30) {
         textAlign(LEFT, CENTER);
-        text(clickhour + "id:" + id + "\n dist: " + round(distance2previous) + "m", xs+r, ys);
+        text(clicktime_spent + "msec, id:" + id + "\n dist: " + round(distance2previous) + "m", xs+r, ys);
       }
 
       fill(255);
@@ -834,6 +858,15 @@ class Spot {
     return trippi;
   }
 
+
+  void set_new_place_avg(float avg_x, float avg_y, float avg_a) {
+    lon = avg_x;
+    lat = avg_y;
+    accuracy = avg_a;
+    clicktime_out = millis();
+    clickhour_out = gettime();
+    clicktime_spent = clicktime_out - clicktime;
+  }
 
   void linedraw(Spot o) {
 
@@ -1012,11 +1045,55 @@ void onLocationEvent(Location _location)
       float dd = location.getLocation().distanceTo(sp.get(sp.size () -1).uic); // viimesimpaan, jos etaisyys riittava
       // println(dd + "/n");
       if ((dd>distance2lastpoint) && (accuracy<accurary_threshold)) { // etaisyys kait metreissa?! if (dd>0.00004) {
+
+
+        // possible that this is empty, e.g. moving fast
+        if (spAll.size ()>1) {
+          // new 160823 - adjust point
+          float avg_x=0;
+          float avg_y=0;
+          float avg_a=0;
+          float avg_w=0;
+          for (int i=fromwherelastspot; i<spAll.size (); i++) {
+            float a_w = 1/(spAll.get(i).accuracy+1); // weigted sum
+            avg_x = avg_x + spAll.get(i).lon*a_w;
+            avg_y = avg_y + spAll.get(i).lat*a_w;
+            avg_a = avg_a + spAll.get(i).accuracy*a_w;
+            avg_w = avg_w + a_w;
+          }
+          avg_x = avg_x / avg_w;
+          avg_y = avg_y / avg_w;
+          avg_a = avg_a / avg_w;
+
+
+          DEV_avg_string = "x: " + avg_x + " y: " + avg_y + " ac: " + avg_a;  
+
+          sp.get(sp.size()-1).set_new_place_avg(avg_x, avg_y, avg_a);
+          //      print("new place");
+          place_added_millis = round(millis()/1000);
+          fromwherelastspot = max(0, spAll.size () - 1); // lets keep all add. alpha spots... removing later...
+          fromwherelastspot = 0 ; // clear each round..
+          spAll.clear(); // clear the balls.. 160823
+
+
+          ArrayList <Spot> spAll = new ArrayList <Spot>();
+
+
+          print("cleared spall");
+          // this is re-calculated:
+
+          // this needed later?!
+          if (sp.size ()>2) { // 1 enough? 160824 edit ... check
+            sp.get(sp.size ()-1).set_distance2previous(sp.get(sp.size ()-1-1));
+          }
+        }
+
         sp.add(new Spot((float)latitude, (float)longitude, w_ellipse, sp.size (), (float)accuracy));
 
         // need to store the accuracy!!! ADD also other places...
         // not obligatory - lets draw also to these spots too the ellipses
-        //spAll.add(new Spot((float)latitude, (float)longitude, w_ellipse, spAll.size ()));
+        // idea changed.. needed. if only one spot / step..
+        spAll.add(new Spot((float)latitude, (float)longitude, w_ellipse, 0, (float)accuracy));
 
         calculate_route_len = true;
         // just added, now just call and compare 1 before it.
@@ -1036,7 +1113,7 @@ void onLocationEvent(Location _location)
         spAll.add(new Spot((float)latitude, (float)longitude, w_ellipse, spAll.size (), (float)accuracy));
       }
     } else {
-      sp.add(new Spot((float)latitude, (float)longitude, w_ellipse, sp.size (),20));
+      sp.add(new Spot((float)latitude, (float)longitude, w_ellipse, sp.size (), 20));
       sp.get(0).distance2previous = 0; // no previous spot
 
       // need to store the accuracy!!! ADD also other places...
