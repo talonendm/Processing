@@ -1106,9 +1106,8 @@ void onLocationEvent(Location _location)
           place_added_millis = round(millis()/1000);
           fromwherelastspot = max(0, spAll.size () - 1); // lets keep all add. alpha spots... removing later...
           fromwherelastspot = 0 ; // clear each round..
-          spAll.clear(); // clear the balls.. 160823
-
-          ArrayList <Spot> spAll = new ArrayList <Spot>();
+          
+          
 
           // this needed later?!
           if (sp.size ()>=2) { // 1 enough? 160824 edit ... check
@@ -1118,6 +1117,11 @@ void onLocationEvent(Location _location)
          
           
         }
+        
+        // allways cleared
+        spAll.clear(); // clear the balls.. 160823
+        ArrayList <Spot> spAll = new ArrayList <Spot>();
+        
         
         if (sp.size ()>=2) {
             sp.get(sp.size ()-1).set_speed2previous();
