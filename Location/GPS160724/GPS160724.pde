@@ -80,6 +80,10 @@ boolean calculate_route_len = false;
 float speed6last = 10; 
 float trip4start = 10; 
 
+
+
+int spAll_maxN = 10; // the max number of spAlls ... later, e.g. 100 or 200 is okay.. 
+
 float accurary_threshold = 20; // 50;  // there could be settings page, where these can be changed... just simple sliders..
 float distance2lastpoint = accurary_threshold*2; // then there should be no need to merge dots; // changed 160823 -- 20; // 30; // tested 160724 - smaller enough.. later use accuracy threshold for filtering.. if jumps during breaks.
 int fromwherelastspot = 0;
@@ -107,6 +111,8 @@ float c_lat, c_lon;
 int dw, dh; // width of the square
 float scale_coor, x_scale_coor, y_scale_coor; 
 
+int location_event_time;
+
 // --------------------------
 int zoomi =15; // google
 int zoomi_yrno = 7; // yrno
@@ -124,10 +130,7 @@ int min_spotsize = 19; // 9 is the minimum --> white line 1
 // constants
 // --------------------------
 int w_line, w_ellipse, w_infotextsize, r_default; // These constants are based on the width of the screen.
-float scale_const = 100 * 1/ 11.3 / 10000 * 2; // how much space between spots and borders? In degrees!
-
-float x_scale_const; //  = 100 * 1/ 11.3 / 10000 * 2;
-float y_scale_const;
+// float scale_const = 100 * 1/ 11.3 / 10000 * 2; // how much space between spots and borders? In degrees!
 
 float x_degree_in_km = 35;     // this can be updated
 float y_degree_in_km = 111.5;  // this can be updated
@@ -174,22 +177,16 @@ void setup() {
   background(60);
   frameRate(25);
 
-
+  // ------------------------------------------------------
+  // spot and line size depends on the width of the screen
   // balls
-  w_ellipse = round(dw/10); //round(dw/17);
+  w_ellipse = round(dw/20); //round(dw/17);
 
   r_default = w_ellipse; // in mousepress, very small spots hard to press.
 
-  w_line = w_ellipse - 4; // simpler, if steps are scaled // round(dw/22);  
+  w_line = max(9,round(w_ellipse / 3)); // w_ellipse - 4; // simpler, if steps are scaled // round(dw/22);  
   w_infotextsize = round(dw/40); 
-
-
-  x_scale_const = scale_const; // scale based on the latitude, helsinki 35km
-  y_scale_const = scale_const; // calculate the value. typically just the same, about 111.4km - make calculations later
-
-
-  textAlign(CENTER, CENTER);  
-  textAlign(LEFT, CENTER);  
+  // ------------------------------------------------------
 
   textSize(10);
 
@@ -199,12 +196,12 @@ void setup() {
   // webImg = loadImage(url_meripinta, "png");
   // webImg = loadImage(url_meripinta);
 
-
+  // ------------------------------------------------------
   // to get steps...
   if (dev_random_loc) {
     distance2lastpoint = distance2lastpoint /2;
   }
-
+  // ------------------------------------------------------
   // not implemented yet... similarly as meripinta:
   // Images which are shown directly in app: (LATER: select the closest station... 160805: now fxed to helsinki
   url_image[0] = "http://cdn.fmi.fi/legacy-fmi-fi-content/products/sea-level-observation-graphs/yearly-plot.php?station=12&lang=fi";
@@ -220,15 +217,12 @@ void setup() {
     url_loaded[i] = false;
     url_image_show[i] = false;
   }
+  // ------------------------------------------------------
 }
-
-
-
-
-
+// ------------------------------------------------------
+// SETUP <--- DRAW ---->
+// ------------------------------------------------------
 void draw() {
-
-  // Route cleared
   stroke(0);
   strokeWeight(2);
   fill(0, 70, 0);
@@ -526,13 +520,22 @@ void draw() {
     textAlign(CENTER, CENTER);
     text("DEV MODE\nnote that\nGREEN BALL\nnot working correctly", dw/4, dw/4);
   }
+
+  // DEV TEXT -----------------
   textAlign(RIGHT, TOP);
   fill(255);
   int m_after_start = round(millis()/1000);
-  text(m_after_start-place_added_millis + " / " + m_after_start + "\n" + spAll.size() + ", sp=" + sp.size(), dw-20, 20);
+  int time_gps = m_after_start - location_event_time;
+  int time_spot = m_after_start - place_added_millis;
+  text("GPS: " + time_gps + "/ Spot: " + time_spot + " / Start: " + m_after_start + "s \n" + spAll.size() + ", sp=" + sp.size(), dw-20, 20);
   text(DEV_avg_string, dw- 20, 140);
   text("spall: " + fromwherelastspot + ".." + spAll.size (), dw-20, 240);
   drawInfobox();
+  for (int i=sp.size ()-1; i>=0; i--) {
+      if (sp.get(i).active) {
+          sp.get(i).show_active_information();
+      }
+  }  
 }
 //*-----------------------------------  //*-----------------------------------
 // <------ DRAW
@@ -658,6 +661,7 @@ class Spot {
   int clicktime_out;   // avg_calc..
   String clickhour_out; // avg calculated
   int clicktime_spent;
+  int clicktime_spent_s;
 
   float dist_mouse = 0;
   int strokeweight = 2;
@@ -665,6 +669,9 @@ class Spot {
   boolean star = false;
   float distance2next; // or TO previous, maybe more useful. set this just before adding new spot. TODO: create function which is called before add.
   float distance2previous;
+  
+  float speed2previous;
+  
   // --------------------------
   Location uic;
   // --------------------------
@@ -763,9 +770,9 @@ class Spot {
 
       fill(200);
 
-      if (scalewithlaststepN<30) {
+      if (scalewithlaststepN<=10) {
         textAlign(LEFT, CENTER);
-        text(clicktime_spent + "msec, id:" + id + "\n dist: " + round(distance2previous) + "m", xs+r, ys);
+        text(clicktime_spent_s + "s, id:" + id + "\n dist: " + round(distance2previous) + "m " + "Speed:" + speed2previous + "m/s" , xs+r, ys);
       }
 
       fill(255);
@@ -787,6 +794,9 @@ class Spot {
     ys = dw - round((((lat - mapminy) * y_scale + s_len + c_len_y) / max_len * dw));
 
     a = (accuracy*dw) / max_len/1000; // i gueess this was in km
+
+    // Idea: r could be the accuracy... r = a;
+    
 
     if ((xs+r>=0) && (xs-r<=dw) && (ys+r>=0) && (ys-r<=dw)) {
       draw_spot = true;
@@ -829,6 +839,15 @@ class Spot {
 
   void set_distance2previous(Spot o) {
     distance2previous = sqrt(pow((lat-o.lat)*y_scale, 2) + pow((lon-o.lon)*x_scale, 2))*1000;
+    if ((millis() - clicktime)>1000) {
+      speed2previous = distance2previous / (float)((millis() - clicktime) / 1000); // [m/s] - updates all the time...
+    } else {
+      speed2previous = 0;
+    }
+  }
+  // calculated one step earlier
+  void set_speed2previous() {
+    speed2previous = distance2previous / (float)clicktime_spent / 1000; // [m/s]
   }
 
 
@@ -859,6 +878,17 @@ class Spot {
   }
 
 
+  void show_active_information() {
+        text("Active data:\n" + 
+        "Latitude: " + lat + "\n" + 
+        "Longitude: " + lon + "\n" + 
+        "Altitude: " + "not stored" + "\n" +
+        "Accuracy: " + accuracy + "m" + "\n" +
+        "Distance to previous: "+ distance2previous + " m\n" +  
+        "Speed to previous: " + speed2previous + " m/s\n" + 
+        "Click: " + clicktime +", time spent"+clicktime_spent, dw/2+10, dw, dw/2-10, dh-dw-200);  
+  }
+
   void set_new_place_avg(float avg_x, float avg_y, float avg_a) {
     lon = avg_x;
     lat = avg_y;
@@ -866,6 +896,7 @@ class Spot {
     clicktime_out = millis();
     clickhour_out = gettime();
     clicktime_spent = clicktime_out - clicktime;
+    clicktime_spent_s = round(clicktime_spent/1000);
   }
 
   void linedraw(Spot o) {
@@ -993,7 +1024,7 @@ void drawInfobox() {
         "Accuracy: " + accuracy + "UCC: " + accurary_threshold + "m" + "\n" +
         "Distance to sp(0): "+ round((float)location.getLocation().distanceTo(sp.get(0).uic)) + " m\n" +  
         "Provider: " + location.getProvider() + "\n" + 
-        "Zoom: " + zoomi +", "+zoomi2+", " + zoomi_yrno, dw/3, dw, dw - dw/3, dh-dw);
+        "Zoom: " + zoomi +", "+zoomi2+", " + zoomi_yrno, 20, dw, dw/2-10, dh-dw-200);
 
       // */
       // <--- androidREM
@@ -1016,13 +1047,14 @@ void onResume()
 
 void onLocationEvent(Location _location)
 {
-  //print out the location object
-  println("onLocation event: " + _location.toString());
+  // print out the location object
+  // println("onLocation event: " + _location.toString());
   longitude = _location.getLongitude();
   latitude = _location.getLatitude();
   altitude = _location.getAltitude();
   accuracy = _location.getAccuracy();
 
+  location_event_time = round(millis()/1000);
 
   if ((!asetettu) && (accuracy<=accurary_threshold)) {
     //    uic2.setLatitude(latitude);
@@ -1038,36 +1070,37 @@ void onLocationEvent(Location _location)
       etaisyys = round(etaisyys / pyoristys)*pyoristys;
     }
 
-
-    // drawings.add(new Drawing((float)latitude, (float)longitude, (float)altitude, (float)accuracy));
+    
+    // ---------------------------------------------------------------
+    // new spot
+    // ---------------------------------------------------------------
     if (sp.size ()>0) {
-      // float dd = dist(cx, cy, sp.get(sp.size ()-1).x, sp.get(sp.size ()-1).y);
-      float dd = location.getLocation().distanceTo(sp.get(sp.size () -1).uic); // viimesimpaan, jos etaisyys riittava
-      // println(dd + "/n");
+      // spots exist already:
+      float dd = location.getLocation().distanceTo(sp.get(sp.size()-1).uic); // If current location enough far from the earlier spot
       if ((dd>distance2lastpoint) && (accuracy<accurary_threshold)) { // etaisyys kait metreissa?! if (dd>0.00004) {
-
-
-        // possible that this is empty, e.g. moving fast
+        // Lets calculate the other spots average - however it is possible that this is empty, e.g. moving fast
         if (spAll.size ()>1) {
-          // new 160823 - adjust point
           float avg_x=0;
           float avg_y=0;
           float avg_a=0;
           float avg_w=0;
+          float avg_d=0; // distances.. lets use also this as a meter of accuracy...
           for (int i=fromwherelastspot; i<spAll.size (); i++) {
             float a_w = 1/(spAll.get(i).accuracy+1); // weigted sum
             avg_x = avg_x + spAll.get(i).lon*a_w;
             avg_y = avg_y + spAll.get(i).lat*a_w;
             avg_a = avg_a + spAll.get(i).accuracy*a_w;
+            avg_d = avg_d + spAll.get(i).distance2previous*a_w;
             avg_w = avg_w + a_w;
           }
           avg_x = avg_x / avg_w;
           avg_y = avg_y / avg_w;
           avg_a = avg_a / avg_w;
+          avg_d = avg_d / avg_w;
 
+          DEV_avg_string = "x: " + avg_x + " y: " + avg_y + " ac: " + avg_a + " dist avg:" + avg_d;  
 
-          DEV_avg_string = "x: " + avg_x + " y: " + avg_y + " ac: " + avg_a;  
-
+          // here it could be used: avg_d
           sp.get(sp.size()-1).set_new_place_avg(avg_x, avg_y, avg_a);
           //      print("new place");
           place_added_millis = round(millis()/1000);
@@ -1075,18 +1108,21 @@ void onLocationEvent(Location _location)
           fromwherelastspot = 0 ; // clear each round..
           spAll.clear(); // clear the balls.. 160823
 
-
           ArrayList <Spot> spAll = new ArrayList <Spot>();
 
-
-          print("cleared spall");
-          // this is re-calculated:
-
           // this needed later?!
-          if (sp.size ()>2) { // 1 enough? 160824 edit ... check
+          if (sp.size ()>=2) { // 1 enough? 160824 edit ... check
             sp.get(sp.size ()-1).set_distance2previous(sp.get(sp.size ()-1-1));
           }
+          
+         
+          
         }
+        
+        if (sp.size ()>=2) {
+            sp.get(sp.size ()-1).set_speed2previous();
+        }
+        
 
         sp.add(new Spot((float)latitude, (float)longitude, w_ellipse, sp.size (), (float)accuracy));
 
@@ -1106,11 +1142,21 @@ void onLocationEvent(Location _location)
           scalewithlaststepN = sp.size();
         } // = true;
       } else {
+        // ------------------------------------------
+        // new gps measurement, but not enough far and accurate
+        // ------------------------------------------
         // one time step stayed same location.
         sp.get(sp.size()-1).resting();
 
-        // need to store the accuracy!!! ADD also other places...
         spAll.add(new Spot((float)latitude, (float)longitude, w_ellipse, spAll.size (), (float)accuracy));
+        
+        // 
+        if (spAll.size()>spAll_maxN) {
+            spAll.remove(0); // lets remove the oldest ones
+            spAll.get(0).distance2previous = 0; // no previous spot - lets set the distance to zero..
+        }
+        
+        
       }
     } else {
       sp.add(new Spot((float)latitude, (float)longitude, w_ellipse, sp.size (), 20));
@@ -1118,6 +1164,7 @@ void onLocationEvent(Location _location)
 
       // need to store the accuracy!!! ADD also other places...
       spAll.add(new Spot((float)latitude, (float)longitude, w_ellipse, spAll.size (), (float)accuracy));
+      spAll.get(0).distance2previous = 0; // no previous spot
     }
   }
 }
