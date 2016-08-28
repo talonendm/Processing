@@ -63,8 +63,8 @@ float mapmaxy;
 // --------------------------
 // map scaling 2.0:
 float x_len, y_len; // long and lat changed to meters
-float x_scale = 35; // long degree and lat degree in kilometers
-float y_scale = 111.5; // long degree and lat degree in kilometers
+float x_scale; // = 35; // long degree and lat degree in kilometers
+float y_scale;// = 111.5; // long degree and lat degree in kilometers
 float s_len0 = 0.05; // 0.02; // [km]
 float s_len = s_len0;  // border size in kilometers, 20 meters... lets change this each round #11
 float c_len_x, c_len_y; // centerizing the smaller distance, x or y
@@ -218,6 +218,14 @@ void setup() {
     url_image_show[i] = false;
   }
   // ------------------------------------------------------
+  // this may correct the distance calucations 160828
+  float latHelsinki = 60.192059;
+  float lonHelsinki = 24.9384;
+  HaversineAlgorithm h = new HaversineAlgorithm();
+  y_scale = (float)h.HaversineInKM(latHelsinki,lonHelsinki,latHelsinki+1,lonHelsinki);
+  x_scale = (float)h.HaversineInKM(latHelsinki,lonHelsinki,latHelsinki,lonHelsinki+1);
+  // ------------------------------------------------------
+  
 }
 // ------------------------------------------------------
 // SETUP <--- DRAW ---->
@@ -669,6 +677,7 @@ class Spot {
   boolean star = false;
   float distance2next; // or TO previous, maybe more useful. set this just before adding new spot. TODO: create function which is called before add.
   float distance2previous;
+  float distance2previousPythagoras;
   
   float speed2previous;
   
@@ -772,7 +781,7 @@ class Spot {
 
       if (scalewithlaststepN<=10) {
         textAlign(LEFT, CENTER);
-        text(clicktime_spent_s + "s, id:" + id + "\n dist: " + round(distance2previous) + "m " + "Speed:" + speed2previous + "m/s" , xs+r, ys);
+        text(clicktime_spent_s + "s, id:" + id + "\n dist: " + round(distance2previous)+ "pyth: " + distance2previousPythagoras + "m " + "Speed:" + speed2previous + "m/s" , xs+r, ys);
       }
 
       fill(255);
@@ -838,7 +847,12 @@ class Spot {
 
 
   void set_distance2previous(Spot o) {
-    distance2previous = sqrt(pow((lat-o.lat)*y_scale, 2) + pow((lon-o.lon)*x_scale, 2))*1000;
+    distance2previousPythagoras = sqrt(pow((lat-o.lat)*y_scale, 2) + pow((lon-o.lon)*x_scale, 2))*1000;
+    
+    HaversineAlgorithm h = new HaversineAlgorithm();
+    distance2previous = h.HaversineInMfloat(lat,lon,o.lat,o.lon);
+    
+    
     if ((millis() - clicktime)>1000) {
       speed2previous = distance2previous / (float)((millis() - clicktime) / 1000); // [m/s] - updates all the time...
     } else {
@@ -1060,6 +1074,12 @@ void onLocationEvent(Location _location)
     //    uic2.setLatitude(latitude);
     //    uic2.setLongitude(longitude); 
     asetettu = true;
+    
+    // lets update given values in Setup only when the first accurate gps coordinates have been tracked - app meant to local tracking only.. 
+    HaversineAlgorithm h = new HaversineAlgorithm();
+    y_scale = (float)h.HaversineInKM(latitude,longitude,latitude+1,longitude); // y scale is 1 degree change S-N direction
+    x_scale = (float)h.HaversineInKM(latitude,longitude,latitude,longitude+1);
+    
   }
   if (asetettu) {
     // etaisyys = location.getLocation().distanceTo(uic2);
@@ -1173,3 +1193,37 @@ void onLocationEvent(Location _location)
   }
 }
 
+
+
+
+
+public class HaversineAlgorithm {
+    // http://stackoverflow.com/questions/365826/calculate-distance-between-2-gps-coordinates
+    static final double _eQuatorialEarthRadius = 6378.1370D;
+    static final double _d2r = (Math.PI / 180D);
+
+    // http://stackoverflow.com/questions/13773710/can-a-class-have-no-constructor
+    // HaversineAlgorithm() {
+    // }
+
+    int HaversineInM(double lat1, double long1, double lat2, double long2) {
+        return (int) (1000D * HaversineInKM(lat1, long1, lat2, long2));
+    }
+    
+    float HaversineInMfloat(double lat1, double long1, double lat2, double long2) {
+        return (float) (1000D * HaversineInKM(lat1, long1, lat2, long2));
+    }
+
+
+    double HaversineInKM(double lat1, double long1, double lat2, double long2) {
+        double dlong = (long2 - long1) * _d2r;
+        double dlat = (lat2 - lat1) * _d2r;
+        double a = Math.pow(Math.sin(dlat / 2D), 2D) + Math.cos(lat1 * _d2r) * Math.cos(lat2 * _d2r)
+                * Math.pow(Math.sin(dlong / 2D), 2D);
+        double c = 2D * Math.atan2(Math.sqrt(a), Math.sqrt(1D - a));
+        double d = _eQuatorialEarthRadius * c;
+
+        return d;
+    }
+
+}
