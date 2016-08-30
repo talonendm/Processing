@@ -184,7 +184,7 @@ void setup() {
 
   r_default = w_ellipse; // in mousepress, very small spots hard to press.
 
-  w_line = max(9,round(w_ellipse / 3)); // w_ellipse - 4; // simpler, if steps are scaled // round(dw/22);  
+  w_line = max(9, round(w_ellipse / 3)); // w_ellipse - 4; // simpler, if steps are scaled // round(dw/22);  
   w_infotextsize = round(dw/40); 
   // ------------------------------------------------------
 
@@ -222,10 +222,9 @@ void setup() {
   float latHelsinki = 60.192059;
   float lonHelsinki = 24.9384;
   HaversineAlgorithm h = new HaversineAlgorithm();
-  y_scale = (float)h.HaversineInKM(latHelsinki,lonHelsinki,latHelsinki+1,lonHelsinki);
-  x_scale = (float)h.HaversineInKM(latHelsinki,lonHelsinki,latHelsinki,lonHelsinki+1);
+  y_scale = (float)h.HaversineInKM(latHelsinki, lonHelsinki, latHelsinki+1, lonHelsinki);
+  x_scale = (float)h.HaversineInKM(latHelsinki, lonHelsinki, latHelsinki, lonHelsinki+1);
   // ------------------------------------------------------
-  
 }
 // ------------------------------------------------------
 // SETUP <--- DRAW ---->
@@ -262,13 +261,13 @@ void draw() {
         float dd = dist(cx, cy, sp.get(sp.size ()-1).lon, sp.get(sp.size ()-1).lat);
         // println(dd + "/n");
         if (dd>0.00004) {
-          sp.add(new Spot(cx, cy, w_ellipse, sp.size (), 20));
+          sp.add(new Spot(cx, cy, w_ellipse, sp.size (), 20, 0));
         } else {
           // one time step stayed same location.
           sp.get(sp.size()-1).resting();
         }
       } else {
-        sp.add(new Spot(cx, cy, w_ellipse, sp.size (), 20));
+        sp.add(new Spot(cx, cy, w_ellipse, sp.size (), 20, 0));
         asetettu = true;
       }
     }
@@ -429,16 +428,22 @@ void draw() {
     // text(20,dw+150 
     // text("B", dh-75, i*dw/5+dw/10);
     fill(0);
-    switch(i) {
-    case 0: 
-      text("NAU", i*dw/link_buttons_N+dw/link_buttons_N/2, dh-75);  // Does not execute
-      break;
-    case 1: 
-      text("TOP", i*dw/link_buttons_N+dw/link_buttons_N/2, dh-75);  // Prints "Bravo"
-      break;
-    default:
-      text(i, i*dw/link_buttons_N+dw/link_buttons_N/2, dh-75);   // Does not execute
-      break;
+
+    if (active_index>-1) {
+      switch(i) {
+      case 0: 
+        text("NAU", i*dw/link_buttons_N+dw/link_buttons_N/2, dh-75);  // Does not execute
+        break;
+      case 1: 
+        text("TOP", i*dw/link_buttons_N+dw/link_buttons_N/2, dh-75);  // Prints "Bravo"
+        break;
+      default:
+        text(i, i*dw/link_buttons_N+dw/link_buttons_N/2, dh-75);   // Does not execute
+        break;
+      }
+    } else {
+      // map button etc.
+      text(i*10, i*dw/link_buttons_N+dw/link_buttons_N/2, dh-75);
     }
   }
 
@@ -540,10 +545,10 @@ void draw() {
   text("spall: " + fromwherelastspot + ".." + spAll.size (), dw-20, 240);
   drawInfobox();
   for (int i=sp.size ()-1; i>=0; i--) {
-      if (sp.get(i).active) {
-          sp.get(i).show_active_information();
-      }
-  }  
+    if (sp.get(i).active) {
+      sp.get(i).show_active_information();
+    }
+  }
 }
 //*-----------------------------------  //*-----------------------------------
 // <------ DRAW
@@ -593,16 +598,9 @@ void mousePressed() {
       zoomi_yrno = round(map(mouseY, 0, dw, 5, 8));
     }
 
-    if ((mouseY<100) && (mouseX>dw-100)) {
-      // webImg = loadImage(url_meripinta, "png");
-      // in JAVA mode: "png" , but in Android... just URL:
-      // webImg = loadImage(url_meripinta, "png");
-      if (!meripintaladattu) {
-        webImg = loadImage(url_meripinta);
-        meripintaladattu = true;
-      } 
-      meripintanayta = !meripintanayta;
-    }
+    // if ((mouseY<100) && (mouseX>dw-100)) {
+
+    //}
   }
 
 
@@ -619,28 +617,42 @@ void mousePressed() {
 
   // alalaita nappi
   if (dh - mouseY<150) {
-    for (int i=0; i<sp.size (); i++) {
-      if (sp.get(i).active) {
-        // see GIST or Onenote
-        //    link("https://www.google.fi/maps/@" + sp.get(i).x + "," + sp.get(i).y +","+zoomi+"z", "MAP");
-        // link("https://www.fonecta.fi/kartat/?lon="+sp.get(i).y+"&lat="+sp.get(i).x+"&z="+zoomi+"&l=NAU");
+    //for (int i=0; i<sp.size (); i++) {
+    //if (sp.get(i).active) {
+    if (active_index>-1) {
+      int i = active_index;
+      // see GIST or Onenote
+      //    link("https://www.google.fi/maps/@" + sp.get(i).x + "," + sp.get(i).y +","+zoomi+"z", "MAP");
+      // link("https://www.fonecta.fi/kartat/?lon="+sp.get(i).y+"&lat="+sp.get(i).x+"&z="+zoomi+"&l=NAU");
 
-        if (mouseX<dw/link_buttons_N) {
-          link("https://www.fonecta.fi/kartat/?lon="+sp.get(i).lon+"&lat="+sp.get(i).lat+"&z="+zoomi+"&l=NAU");
-        } else if (mouseX<dw/link_buttons_N*2) {
-          link("https://www.fonecta.fi/kartat/?lon="+sp.get(i).lon+"&lat="+sp.get(i).lat+"&z="+zoomi+"&l=TOP");
-        } else if (mouseX<dw/link_buttons_N*3) {
-          link("https://www.fonecta.fi/kartat/?lon="+sp.get(i).lon+"&lat="+sp.get(i).lat+"&z="+zoomi+"&l=HYB");
-        } else if (mouseX<dw/link_buttons_N*4) {
-          link("https://www.fonecta.fi/kartat/?lon="+sp.get(i).lon+"&lat="+sp.get(i).lat+"&z="+zoomi+"&l=SAT");
-        } else if (mouseX<dw/link_buttons_N*5) {
-          link("http://www.yr.no/kart/#lat=" +sp.get(i).lat+ "&lon=" +sp.get(i).lon+ "&zoom="+zoomi_yrno);
-        } else {
-          // just else enough
-          link("https://www.google.fi/maps/@" + sp.get(i).lat + "," + sp.get(i).lon +","+zoomi+"z", "MAP");
-        }
+      if (mouseX<dw/link_buttons_N) {
+        link("https://www.fonecta.fi/kartat/?lon="+sp.get(i).lon+"&lat="+sp.get(i).lat+"&z="+zoomi+"&l=NAU");
+      } else if (mouseX<dw/link_buttons_N*2) {
+        link("https://www.fonecta.fi/kartat/?lon="+sp.get(i).lon+"&lat="+sp.get(i).lat+"&z="+zoomi+"&l=TOP");
+      } else if (mouseX<dw/link_buttons_N*3) {
+        link("https://www.fonecta.fi/kartat/?lon="+sp.get(i).lon+"&lat="+sp.get(i).lat+"&z="+zoomi+"&l=HYB");
+      } else if (mouseX<dw/link_buttons_N*4) {
+        link("https://www.fonecta.fi/kartat/?lon="+sp.get(i).lon+"&lat="+sp.get(i).lat+"&z="+zoomi+"&l=SAT");
+      } else if (mouseX<dw/link_buttons_N*5) {
+        link("http://www.yr.no/kart/#lat=" +sp.get(i).lat+ "&lon=" +sp.get(i).lon+ "&zoom="+zoomi_yrno);
+      } else {
+        // just else enough
+        link("https://www.google.fi/maps/@" + sp.get(i).lat + "," + sp.get(i).lon +","+zoomi+"z", "MAP");
       }
+      //  }
       // "NAU"; // "TOP" "HYB" "SAT" + GOOGle
+      //}
+    } else {
+      if (mouseX<dw/link_buttons_N) {
+        // webImg = loadImage(url_meripinta, "png");
+        // in JAVA mode: "png" , but in Android... just URL:
+        // webImg = loadImage(url_meripinta, "png");
+        if (!meripintaladattu) {
+          webImg = loadImage(url_meripinta);
+          meripintaladattu = true;
+        } 
+        meripintanayta = !meripintanayta;
+      }
     }
   }
 }
@@ -677,10 +689,12 @@ class Spot {
   boolean star = false;
   float distance2next; // or TO previous, maybe more useful. set this just before adding new spot. TODO: create function which is called before add.
   float distance2previous;
+  float distance2previous_with_height;
+  float h; // altitude in meters
   float distance2previousPythagoras;
-  
+
   float speed2previous;
-  
+
   // --------------------------
   Location uic;
   // --------------------------
@@ -709,7 +723,7 @@ class Spot {
   // --------------------------
   // TODO: add accuracy, height, etc.
   // --------------------------
-  Spot(float latpos, float lonpos, float radius_, int id_, float accuracy_) {
+  Spot(float latpos, float lonpos, float radius_, int id_, float accuracy_, float altitude_) {
     lat = latpos;   // latitude
     lon = lonpos;   // longitude
 
@@ -726,7 +740,7 @@ class Spot {
     strokeweight = 1;
     id = id_;
     accuracy = accuracy_;
-
+    h = altitude_;
     // accuracy not stored to spots
     // --------------------------
     // distance.. just make text boxes without info in Java mode.
@@ -779,14 +793,15 @@ class Spot {
 
       fill(200);
 
-      if (scalewithlaststepN<=10) {
+      if (scalewithlaststepN<=5) {
         textAlign(LEFT, CENTER);
-        text(clicktime_spent_s + "s, id:" + id + "\n dist: " + round(distance2previous)+ "pyth: " + distance2previousPythagoras + "m " + "Speed:" + speed2previous + "m/s" , xs+r, ys);
+        text(clicktime_spent_s + "s, id:" + id + "\n dist: " + (distance2previous)+ "\npyth: " + distance2previousPythagoras + "\nhav+heightm " + distance2previous_with_height + "\nSpeed:" + speed2previous + "m/s", xs+r, ys);
       }
 
       fill(255);
       textAlign(CENTER, CENTER);
-      text(rest_time, xs, ys);
+      // text(rest_time, xs, ys);
+      text(clicktime_spent_s, xs, ys);
     }
   }
 
@@ -805,7 +820,7 @@ class Spot {
     a = (accuracy*dw) / max_len/1000; // i gueess this was in km
 
     // Idea: r could be the accuracy... r = a;
-    
+
 
     if ((xs+r>=0) && (xs-r<=dw) && (ys+r>=0) && (ys-r<=dw)) {
       draw_spot = true;
@@ -848,20 +863,24 @@ class Spot {
 
   void set_distance2previous(Spot o) {
     distance2previousPythagoras = sqrt(pow((lat-o.lat)*y_scale, 2) + pow((lon-o.lon)*x_scale, 2))*1000;
-    
-    HaversineAlgorithm h = new HaversineAlgorithm();
-    distance2previous = h.HaversineInMfloat(lat,lon,o.lat,o.lon);
-    
-    
-    if ((millis() - clicktime)>1000) {
-      speed2previous = distance2previous / (float)((millis() - clicktime) / 1000); // [m/s] - updates all the time...
-    } else {
-      speed2previous = 0;
-    }
+
+    HaversineAlgorithm hav = new HaversineAlgorithm();
+    distance2previous = hav.HaversineInMfloat(lat, lon, o.lat, o.lon);
+
+    distance2previous_with_height = sqrt(distance2previous*distance2previous + pow((h - o.h), 2));
+
+
+    //    if ((millis() - clicktime)>1000) {
+    //      speed2previous = distance2previous / (float)((millis() - clicktime) / 1000); // [m/s] - updates all the time...
+    //    } else {
+    //      speed2previous = 0;
+    //    }
   }
   // calculated one step earlier
   void set_speed2previous() {
-    speed2previous = distance2previous / (float)clicktime_spent / 1000; // [m/s]
+    if (clicktime_spent>0) { 
+      speed2previous = distance2previous / ((float)clicktime_spent / 1000); // [m/s]
+    }
   }
 
 
@@ -893,20 +912,29 @@ class Spot {
 
 
   void show_active_information() {
-        text("Active data:\n" + 
-        "Latitude: " + lat + "\n" + 
-        "Longitude: " + lon + "\n" + 
-        "Altitude: " + "not stored" + "\n" +
-        "Accuracy: " + accuracy + "m" + "\n" +
-        "Distance to previous: "+ distance2previous + " m\n" +  
-        "Speed to previous: " + speed2previous + " m/s\n" + 
-        "Click: " + clicktime +", time spent"+clicktime_spent, dw/2+10, dw, dw/2-10, dh-dw-200);  
+    text("Active data:\n" + 
+      "Latitude: " + lat + "\n" + 
+      "Longitude: " + lon + "\n" + 
+      "Altitude: " + h + "\n" +
+      "Accuracy: " + accuracy + "m" + "\n" +
+      "Distance to prev. Pyth.: "+ distance2previousPythagoras + " m\n" +  
+      "Distance to prev. Hav.: "+ distance2previous + " m\n" + 
+      "Dist. to prev.+ Hav alt.: "+ distance2previous_with_height + " m\n" + 
+      "Speed to previous: " + speed2previous + " m/s\n" + 
+      "Click: " + round(clicktime/1000) +", time spent: "+round(clicktime_spent/1000) + 
+      "ClickOut: " + round(clicktime_out/1000), dw/2+10, dw, dw/2-10, dh-dw-200);
   }
 
   void set_new_place_avg(float avg_x, float avg_y, float avg_a) {
     lon = avg_x;
     lat = avg_y;
     accuracy = avg_a;
+    clicktime_out = millis();
+    clickhour_out = gettime();
+    clicktime_spent = clicktime_out - clicktime;
+    clicktime_spent_s = round(clicktime_spent/1000);
+  }
+  void set_info_to_previous() {
     clicktime_out = millis();
     clickhour_out = gettime();
     clicktime_spent = clicktime_out - clicktime;
@@ -923,7 +951,7 @@ class Spot {
 
     if ((draw_spot) || (o.draw_spot)) {
       float ww = min(o.r, r);
-      w_line = round(ww-4); // r min is 9, this is 5, and inner 1. 160728
+      w_line = 5; // constant line.. round(ww-4); // r min is 9, this is 5, and inner 1. 160728
       strokeWeight(w_line);
       stroke(0, max(10, 100 - (sp.size ()-id*4)));
       line(xx, yy, oxx, oyy);
@@ -1034,7 +1062,7 @@ void drawInfobox() {
         text("Location data:\n" + 
         "Latitude: " + latitude + "\n" + 
         "Longitude: " + longitude + "\n" + 
-        "Altitude: " + round((float)altitude) + "\n" +
+        "Altitude: " + ((float)altitude) + "\n" +
         "Accuracy: " + accuracy + "UCC: " + accurary_threshold + "m" + "\n" +
         "Distance to sp(0): "+ round((float)location.getLocation().distanceTo(sp.get(0).uic)) + " m\n" +  
         "Provider: " + location.getProvider() + "\n" + 
@@ -1074,12 +1102,11 @@ void onLocationEvent(Location _location)
     //    uic2.setLatitude(latitude);
     //    uic2.setLongitude(longitude); 
     asetettu = true;
-    
+
     // lets update given values in Setup only when the first accurate gps coordinates have been tracked - app meant to local tracking only.. 
     HaversineAlgorithm h = new HaversineAlgorithm();
-    y_scale = (float)h.HaversineInKM(latitude,longitude,latitude+1,longitude); // y scale is 1 degree change S-N direction
-    x_scale = (float)h.HaversineInKM(latitude,longitude,latitude,longitude+1);
-    
+    y_scale = (float)h.HaversineInKM(latitude, longitude, latitude+1, longitude); // y scale is 1 degree change S-N direction
+    x_scale = (float)h.HaversineInKM(latitude, longitude, latitude, longitude+1);
   }
   if (asetettu) {
     // etaisyys = location.getLocation().distanceTo(uic2);
@@ -1090,7 +1117,7 @@ void onLocationEvent(Location _location)
       etaisyys = round(etaisyys / pyoristys)*pyoristys;
     }
 
-    
+
     // ---------------------------------------------------------------
     // new spot
     // ---------------------------------------------------------------
@@ -1126,34 +1153,34 @@ void onLocationEvent(Location _location)
           place_added_millis = round(millis()/1000);
           fromwherelastspot = max(0, spAll.size () - 1); // lets keep all add. alpha spots... removing later...
           fromwherelastspot = 0 ; // clear each round..
-          
-          
+
+
 
           // this needed later?!
           if (sp.size ()>=2) { // 1 enough? 160824 edit ... check
             sp.get(sp.size ()-1).set_distance2previous(sp.get(sp.size ()-1-1));
           }
-          
-         
-          
+        } else {
+          // lets set out times...
+          sp.get(sp.size()-1).set_info_to_previous();
         }
-        
+
         // allways cleared
         spAll.clear(); // clear the balls.. 160823
         ArrayList <Spot> spAll = new ArrayList <Spot>();
-        
-        
-        if (sp.size ()>=2) {
-            sp.get(sp.size ()-1).set_speed2previous();
-        }
-        
 
-        sp.add(new Spot((float)latitude, (float)longitude, w_ellipse, sp.size (), (float)accuracy));
+
+        if (sp.size ()>1) {
+          sp.get(sp.size ()-1).set_speed2previous();
+        }
+
+
+        sp.add(new Spot((float)latitude, (float)longitude, w_ellipse, sp.size (), (float)accuracy, (float)altitude));
 
         // need to store the accuracy!!! ADD also other places...
         // not obligatory - lets draw also to these spots too the ellipses
         // idea changed.. needed. if only one spot / step..
-        spAll.add(new Spot((float)latitude, (float)longitude, w_ellipse, 0, (float)accuracy));
+        spAll.add(new Spot((float)latitude, (float)longitude, w_ellipse, 0, (float)accuracy, (float)altitude));
 
         calculate_route_len = true;
         // just added, now just call and compare 1 before it.
@@ -1172,22 +1199,20 @@ void onLocationEvent(Location _location)
         // one time step stayed same location.
         sp.get(sp.size()-1).resting();
 
-        spAll.add(new Spot((float)latitude, (float)longitude, w_ellipse, spAll.size (), (float)accuracy));
-        
+        spAll.add(new Spot((float)latitude, (float)longitude, w_ellipse, spAll.size (), (float)accuracy, (float)altitude));
+
         // 
         if (spAll.size()>spAll_maxN) {
-            spAll.remove(0); // lets remove the oldest ones
-            spAll.get(0).distance2previous = 0; // no previous spot - lets set the distance to zero..
+          spAll.remove(0); // lets remove the oldest ones
+          spAll.get(0).distance2previous = 0; // no previous spot - lets set the distance to zero..
         }
-        
-        
       }
     } else {
-      sp.add(new Spot((float)latitude, (float)longitude, w_ellipse, sp.size (), 20));
+      sp.add(new Spot((float)latitude, (float)longitude, w_ellipse, sp.size (), (float)accuracy, (float)altitude));
       sp.get(0).distance2previous = 0; // no previous spot
 
       // need to store the accuracy!!! ADD also other places...
-      spAll.add(new Spot((float)latitude, (float)longitude, w_ellipse, spAll.size (), (float)accuracy));
+      spAll.add(new Spot((float)latitude, (float)longitude, w_ellipse, spAll.size (), (float)accuracy, (float)altitude));
       spAll.get(0).distance2previous = 0; // no previous spot
     }
   }
@@ -1198,32 +1223,32 @@ void onLocationEvent(Location _location)
 
 
 public class HaversineAlgorithm {
-    // http://stackoverflow.com/questions/365826/calculate-distance-between-2-gps-coordinates
-    static final double _eQuatorialEarthRadius = 6378.1370D;
-    static final double _d2r = (Math.PI / 180D);
+  // http://stackoverflow.com/questions/365826/calculate-distance-between-2-gps-coordinates
+  static final double _eQuatorialEarthRadius = 6378.1370D;
+  static final double _d2r = (Math.PI / 180D);
 
-    // http://stackoverflow.com/questions/13773710/can-a-class-have-no-constructor
-    // HaversineAlgorithm() {
-    // }
+  // http://stackoverflow.com/questions/13773710/can-a-class-have-no-constructor
+  // HaversineAlgorithm() {
+  // }
 
-    int HaversineInM(double lat1, double long1, double lat2, double long2) {
-        return (int) (1000D * HaversineInKM(lat1, long1, lat2, long2));
-    }
-    
-    float HaversineInMfloat(double lat1, double long1, double lat2, double long2) {
-        return (float) (1000D * HaversineInKM(lat1, long1, lat2, long2));
-    }
+  int HaversineInM(double lat1, double long1, double lat2, double long2) {
+    return (int) (1000D * HaversineInKM(lat1, long1, lat2, long2));
+  }
+
+  float HaversineInMfloat(double lat1, double long1, double lat2, double long2) {
+    return (float) (1000D * HaversineInKM(lat1, long1, lat2, long2));
+  }
 
 
-    double HaversineInKM(double lat1, double long1, double lat2, double long2) {
-        double dlong = (long2 - long1) * _d2r;
-        double dlat = (lat2 - lat1) * _d2r;
-        double a = Math.pow(Math.sin(dlat / 2D), 2D) + Math.cos(lat1 * _d2r) * Math.cos(lat2 * _d2r)
-                * Math.pow(Math.sin(dlong / 2D), 2D);
-        double c = 2D * Math.atan2(Math.sqrt(a), Math.sqrt(1D - a));
-        double d = _eQuatorialEarthRadius * c;
+  double HaversineInKM(double lat1, double long1, double lat2, double long2) {
+    double dlong = (long2 - long1) * _d2r;
+    double dlat = (lat2 - lat1) * _d2r;
+    double a = Math.pow(Math.sin(dlat / 2D), 2D) + Math.cos(lat1 * _d2r) * Math.cos(lat2 * _d2r)
+      * Math.pow(Math.sin(dlong / 2D), 2D);
+    double c = 2D * Math.atan2(Math.sqrt(a), Math.sqrt(1D - a));
+    double d = _eQuatorialEarthRadius * c;
 
-        return d;
-    }
-
+    return d;
+  }
 }
+
