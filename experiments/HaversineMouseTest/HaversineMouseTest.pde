@@ -29,7 +29,7 @@ float lon;
 //Midpoint:  60°10′15″N, 025°26′18″E
 
 
-HaversineAlgorithm h;
+//HaversineAlgorithm h;
 
 void setup() {
   size(400,400);
@@ -37,7 +37,7 @@ void setup() {
   lat =60.192059;  // leveyspiiri, pohjosessa ollaan
   lon = 24.9384; 
   
-  HaversineAlgorithm h = new HaversineAlgorithm();
+  //HaversineAlgorithm h = new HaversineAlgorithm();
 } 
 
 void draw() {
@@ -45,8 +45,8 @@ void draw() {
   text(mouseX+ ", " +mouseY,50,50);
   HaversineAlgorithm h = new HaversineAlgorithm();
   text(h.HaversineInM(lat,lon,lat,lon + 1),50,80);
-  text((float)h.HaversineInKM(lat,lon,lat,lon+1),50,100);
-  text((float)h.HaversineInKM(lat,lon,lat+1,lon),50,120);
+  text("lon 1:" + (float)h.HaversineInKM(lat,lon,lat,lon+1),50,100);
+  text("lat 1:" + (float)h.HaversineInKM(lat,lon,lat+1,lon),50,120);
   text((float)h.HaversineInKM(lat,lon,lat+1,lon+1),50,140);
   text((float)h.HaversineInKM(lat,lon,lat + ((float)mouseX-200)/100,lon+((float)mouseY-200)/100),50,160);
   text((float)h.HaversineInKM(lat,lon,lat + ((float)mouseX-200)/100,lon),50,180);

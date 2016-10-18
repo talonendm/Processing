@@ -10,6 +10,8 @@
  160823 - do not commit - working version at github - fix this
  I guess the avg. calculation has some bugs. 
  
+ 161017 - Hscrollvar added, ref: examples at processing. It was developed a bit further, having range scale possibility.
+ 
  
  */
 
@@ -17,6 +19,9 @@
 // not needed in JAVA mode, but in Android mode
 // https://developer.android.com/reference/java/util/ArrayList.html
 import java.util.*;
+
+
+HScrollbar hs1, hs2;
 
 // 
 float etaisyys =0;
@@ -137,7 +142,10 @@ float y_degree_in_km = 111.5;  // this can be updated
 
 
 int scalewithlaststepN = 24; // number of steps shown in the square
-
+int firstscalestep=0;
+int lastscalestep=0;
+int slidernearthreshold = 30 ; // round(dw/14); // kuinka lähel
+int slidermargin = 30;
 float paivantasaajalla = 6390*3.142*2/360*1000; // metria
 
 // --------------------------
@@ -173,6 +181,8 @@ void setup() {
     cx = 60.146613;
     cy = 24.3355331;
   } 
+
+  slidernearthreshold = round(dw/30);
 
   background(60);
   frameRate(25);
@@ -225,6 +235,10 @@ void setup() {
   y_scale = (float)h.HaversineInKM(latHelsinki, lonHelsinki, latHelsinki+1, lonHelsinki);
   x_scale = (float)h.HaversineInKM(latHelsinki, lonHelsinki, latHelsinki, lonHelsinki+1);
   // ------------------------------------------------------
+
+
+  int sliderspeed = 5;
+  hs2 = new HScrollbar(slidermargin, dw+10, dw-slidermargin*2, 80, sliderspeed , true); // slider
 }
 // ------------------------------------------------------
 // SETUP <--- DRAW ---->
@@ -281,7 +295,8 @@ void draw() {
   mapmaxx = 0;
   mapmaxy = 0;
   // last places, use those as center... current place on border - ok
-  for (int i=max (0, sp.size () - scalewithlaststepN); i<sp.size (); i++) {
+  //for (int i=max (0, sp.size () - scalewithlaststepN); i<sp.size (); i++) {
+  for (int i=max (0, sp.size () - lastscalestep); i<sp.size () - firstscalestep; i++) {
     if (sp.get(i).lon<mapminx) { 
       mapminx = sp.get(i).lon;
     }
@@ -412,10 +427,11 @@ void draw() {
   // ALABOKSI    
   stroke(0);
   strokeWeight(1);
-  fill(0, 20, 0);
+  fill(0, 20, 20);
+  rectMode(CORNER);
   rect(0, dw+100, dw, dh-dw-250);
-  fill(0, 30, 0);
-  rect(0, dw, dw, 100);
+  // fill(0, 90, 90);
+  // rect(0, dw, dw, 100);
 
 
   textAlign(CENTER, CENTER);
@@ -534,6 +550,26 @@ void draw() {
     text("DEV MODE\nnote that\nGREEN BALL\nnot working correctly", dw/4, dw/4);
   }
 
+
+  // slider
+  // hs1.update();
+  hs2.update();
+  // hs1.display();
+  hs2.display();
+  firstscalestep = round(map(hs2.getPos1(), slidermargin, dw - slidermargin*2, 0, max(0, sp.size())));
+  lastscalestep = round(map(hs2.getPos2(), slidermargin, dw - slidermargin*2, 1, max(1, sp.size())));
+
+  scalewithlaststepN = lastscalestep; // round(map(mouseX, 0, dw, 1, max(1, sp.size())));
+
+  if (sp.size() == scalewithlaststepN) {
+    autoscale_laststepN = true;
+  } else {
+    autoscale_laststepN = false;
+  }
+
+
+
+
   // DEV TEXT -----------------
   textAlign(RIGHT, TOP);
   fill(255);
@@ -565,7 +601,9 @@ void mousePressed() {
   // OK. otherwise false clicks. 1) activate the ball, and just the most recent one, if many -- loop TODO backwards, and then break;
 
 
-
+  // ----------------------------------------
+  // map box
+  // ----------------------------------------
   if (mouseY<dw) {
 
     // ACTIVE pointers cleared, one only, if map area is pressed. Star is used for link buttons etc.
@@ -603,16 +641,14 @@ void mousePressed() {
     //}
   }
 
-
+  // ----------------------------------------
+  // scaling place -- i.e. slider
+  // ----------------------------------------
   if ((mouseY>dw) && (mouseY<dw+100)) {
     // full scale:
-    scalewithlaststepN = round(map(mouseX, 0, dw, 1, max(1, sp.size())));
 
-    if (sp.size() == scalewithlaststepN) {
-      autoscale_laststepN = true;
-    } else {
-      autoscale_laststepN = false;
-    }
+
+    // changed 161017
   }
 
   // alalaita nappi
@@ -1046,9 +1082,22 @@ void drawInfobox() {
 
   textAlign(CENTER, CENTER);
 
-  String spots_zoomed = min(sp.size(), scalewithlaststepN) + "/" + sp.size();
-  text(spots_zoomed, dw/2, dw+rivikoko);
-  textAlign(LEFT, CENTER);
+  fill(255, 0, 0);
+  String spots_zoomed;
+  if (sp.size() == 0) {
+    // no text over the scale range
+  } else {
+    if (firstscalestep + 1 == lastscalestep) {
+      spots_zoomed =  "(" + lastscalestep + ") / " + sp.size();
+    } else {
+      spots_zoomed =  "(" + firstscalestep + " - " + lastscalestep + ") / " + sp.size();
+    }
+
+
+    text(spots_zoomed, dw/2, dw+rivikoko);
+    textAlign(LEFT, CENTER);
+  }
+  fill(255);
   if (androidi) {
 
     // e.g. altitude is double, round is not working for that..
@@ -1071,7 +1120,17 @@ void drawInfobox() {
       // */
       // <--- androidREM
     } else {
-      text("No GPS signal", dw/3, dw, dw - dw/3, dh-dw);
+      
+      noStroke();
+      fill(125,40,40,50);
+      ellipse(dw/2,(dh-dw)/2+ dw,sin(float(frameCount)/50)*dw/3+dw/1.7,abs(cos(float(frameCount)/70))*(dh-dw)/2+40);
+      fill(40,125,40,50);
+      ellipse(dw/2,(dh-dw)/2+ dw,sin(float(frameCount)/60)*dw/3+dw/1.7,abs(cos(float(frameCount)/50))*(dh-dw)/2+40);
+      fill(25,40,120,50);
+      ellipse(dw/2,(dh-dw)/2+ dw,sin(float(frameCount)/150)*dw/3+dw/1.7,abs(cos(float(frameCount)/40))*(dh-dw)/2+40);
+      fill(255,0,0);
+      strokeWeight(1);
+      text("No GPS signal", dw/2, (dh-dw)/2+ dw);
     }
   }
 }
