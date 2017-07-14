@@ -1,8 +1,19 @@
+// ---------------------------------------------------------
+// 170717
+// talonen
+// cd talonendm/Processing/experiments/
+// git add .
+// git commit -am "Processing code for pdf"
+// git push origin master
+// ---------------------------------------------------------
+
+// ---------------------------------------------------------
 import processing.pdf.*;
 int valittu = 1;
 int valittu_bak = 1;
+// ---------------------------------------------------------
 
-color[] colors = new color[3];
+color[] colors = new color[6];
 int cv=0;
 
 float[] be;
@@ -11,16 +22,27 @@ boolean helplines = true;
 int mox, moy;
 ArrayList <bezi> bez = new ArrayList <bezi>();
 
+// ---------------------------------------------------------
 void setup() {
+  
+  // ---------------------------------------------------------
   size(400, 400);
+  // ---------------------------------------------------------
 
   if (makepdf == true) {
     beginRecord(PDF, "everything2.pdf");
   }
 
+ // ---------------------------------------------------------
   colors[0] = color(255, 0, 0);
   colors[1] = color(0, 255, 0);
   colors[2] = color(0, 0, 255);
+  colors[3] = color(255,255,0);
+  colors[4] = color(0,255,255);
+  colors[5] = color(255,0,255);
+
+  print(colors.length);
+// ---------------------------------------------------------
 
 
   be = new float[8];
@@ -112,7 +134,7 @@ void keyPressed() {
 
   if (key == 'c') {
     cv++;
-    if (cv>2) {
+    if (cv>colors.length-1) {
       cv=0;
     }
   }
